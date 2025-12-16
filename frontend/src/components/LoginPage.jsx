@@ -68,12 +68,36 @@ const LoginPage = () => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        if (data.user.role === 'parent') {
-          navigate('/parent-dashboard');
-        } else if (data.user.role === 'babysitter') {
-          navigate('/babysitter-dashboard');
-        } else {
+        // Admin goes directly to dashboard
+        if (data.user.role === 'admin') {
           navigate('/admin-dashboard');
+          return;
+        }
+        
+        // Check verification status for parents and babysitters
+        const verificationEndpoint = data.user.role === 'babysitter'
+          ? `http://localhost:3001/api/babysitters/verification-status/${data.user.id}`
+          : `http://localhost:3001/api/parents/verification-status/${data.user.id}`;
+        
+        try {
+          const verifyRes = await fetch(verificationEndpoint);
+          const verifyData = await verifyRes.json();
+          
+          if (verifyData.success && verifyData.data.verificationStatus === 'approved') {
+            // User is approved, go to their dashboard
+            if (data.user.role === 'parent') {
+              navigate('/parent-dashboard');
+            } else {
+              navigate('/babysitter-dashboard');
+            }
+          } else {
+            // User is pending or rejected, go to review page
+            navigate('/account-under-review');
+          }
+        } catch (err) {
+          // If verification check fails, redirect to review page to be safe
+          console.error('Verification check failed:', err);
+          navigate('/account-under-review');
         }
       } else {
         setError(data.message || 'Login failed. Please try again.');

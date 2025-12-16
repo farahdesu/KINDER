@@ -68,6 +68,19 @@ const babysitterSchema = new mongoose.Schema({
     comment: String,
     date: { type: Date, default: Date.now }
   }],
+  // Verification status
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  verificationDate: {
+    type: Date
+  },
+  rejectionReason: {
+    type: String,
+    default: ''
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -28,6 +28,8 @@ mongoose.connect(process.env.MONGODB_URI)
 const authRoutes = require('./routes/authRoutes');
 const babysitterRoutes = require('./routes/babysitterRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const parentRoutes = require('./routes/parentRoutes');
 
 // ====================
 // ROUTES
@@ -46,7 +48,9 @@ app.get('/', (req, res) => {
       '/api/auth/users',
       '/api/babysitters',
       '/api/bookings',
-      '/api/bookings/available-babysitters'
+      '/api/bookings/available-babysitters',
+      '/api/admin/login',
+      '/api/admin/dashboard'
     ]
   });
 });
@@ -97,6 +101,12 @@ app.use('/api/babysitters', babysitterRoutes);
 // 6. Booking routes
 app.use('/api/bookings', bookingRoutes);
 
+// 7. Admin routes
+app.use('/api/admin', adminRoutes);
+
+// 8. Parent routes
+app.use('/api/parents', parentRoutes);
+
 // Test if routes are loaded
 app.get('/api/routes', (req, res) => {
   res.json({ 
@@ -106,6 +116,7 @@ app.get('/api/routes', (req, res) => {
       auth: ['/register (POST)', '/login (POST)', '/users (GET)'],
       babysitters: ['/ (GET)', '/:id (GET)', '/available-babysitters (GET)'],
       bookings: ['/ (GET)', '/ (POST)', '/:id (PUT)', '/available-babysitters (GET)'],
+      admin: ['/login (POST)', '/dashboard (GET)', '/users (GET)', '/bookings (GET)', '/verifications (GET)'],
       health: ['/health', '/api/health']
     }
   });
@@ -146,6 +157,7 @@ app.listen(PORT, () => {
   console.log(`👤 Auth routes: /api/auth/register, /api/auth/login`);
   console.log(`👶 Babysitter routes: /api/babysitters`);
   console.log(`📅 Booking routes: /api/bookings`);
-  console.log(`📋 Total endpoints: 12+`);
+  console.log(`👨‍💼 Admin routes: /api/admin/login, /api/admin/dashboard`);
+  console.log(`📋 Total endpoints: 15+`);
   console.log(`=================================`);
 });

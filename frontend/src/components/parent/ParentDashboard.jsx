@@ -47,15 +47,39 @@ const ParentDashboard = () => {
       const userData = JSON.parse(storedUser);
       console.log('✅ User authenticated:', userData.name);
       console.log('👤 Role:', userData.role);
-      setUser(userData);
       
-      // Fetch babysitters
-      fetchBabysitters();
+      // Check verification status before allowing access
+      checkVerificationStatus(userData);
     } else {
       console.log('❌ No credentials found. Redirecting to login...');
       navigate('/login');
     }
   }, [navigate]);
+
+  const checkVerificationStatus = async (userData) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/parents/verification-status/${userData.id}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        if (data.data.verificationStatus === 'approved') {
+          // User is approved, allow access
+          setUser(userData);
+          fetchBabysitters();
+        } else {
+          // User is not approved, redirect to review page
+          console.log('❌ User not verified. Redirecting to review page...');
+          navigate('/account-under-review');
+        }
+      } else {
+        // If verification check fails, redirect to review page
+        navigate('/account-under-review');
+      }
+    } catch (error) {
+      console.error('Error checking verification:', error);
+      navigate('/account-under-review');
+    }
+  };
 
   const fetchBabysitters = async () => {
     console.log('📡 Calling babysitters API...');

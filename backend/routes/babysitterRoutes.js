@@ -3,10 +3,11 @@ const router = express.Router();
 const Babysitter = require('../models/Babysitter');
 const User = require('../models/User');
 
-// GET /api/babysitters - Get all babysitters
+// GET /api/babysitters - Get all approved babysitters (for parents to see)
 router.get('/', async (req, res) => {
   try {
-    const babysitters = await Babysitter.find()
+    // Only show babysitters with approved verification status
+    const babysitters = await Babysitter.find({ verificationStatus: 'approved' })
       .populate({
         path: 'userId',
         select: 'name email phone'
@@ -31,6 +32,7 @@ router.get('/', async (req, res) => {
         hourlyRate: bs.hourlyRate || 0,
         rating: bs.rating || 0,
         totalJobs: bs.totalJobs || 0,
+        verificationStatus: bs.verificationStatus,
         createdAt: bs.createdAt
       };
     });
@@ -45,6 +47,36 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error fetching babysitters'
+    });
+  }
+});
+
+// GET /api/babysitters/verification-status/:userId - Check verification status for a babysitter
+router.get('/verification-status/:userId', async (req, res) => {
+  try {
+    const babysitter = await Babysitter.findOne({ userId: req.params.userId })
+      .select('verificationStatus verificationDate rejectionReason');
+    
+    if (!babysitter) {
+      return res.status(404).json({
+        success: false,
+        message: 'Babysitter profile not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        verificationStatus: babysitter.verificationStatus,
+        verificationDate: babysitter.verificationDate,
+        rejectionReason: babysitter.rejectionReason
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching verification status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching verification status'
     });
   }
 });

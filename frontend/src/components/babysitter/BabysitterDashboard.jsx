@@ -9,6 +9,8 @@ const BabysitterDashboard = () => {
   const [skills, setSkills] = useState([]);
   const [newSkill, setNewSkill] = useState('');
   const [profileIdMap, setProfileIdMap] = useState({});
+  const [verificationStatus, setVerificationStatus] = useState('pending');
+  const [rejectionReason, setRejectionReason] = useState('');
   const navigate = useNavigate();
 
   // ✅ Helper function to check if booking ID is real (MongoDB ID) or mock
@@ -226,6 +228,35 @@ const BabysitterDashboard = () => {
     }
   };
 
+  // Check verification status
+  const checkVerificationStatus = async (userId) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/babysitters/verification-status/${userId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('📋 Verification status:', data.data.verificationStatus);
+        
+        if (data.data.verificationStatus !== 'approved') {
+          // Not approved, redirect to review page
+          console.log('❌ User not verified. Redirecting to review page...');
+          navigate('/account-under-review');
+          return null;
+        }
+        
+        setVerificationStatus(data.data.verificationStatus);
+        return data.data.verificationStatus;
+      }
+      // If check fails, redirect to review page
+      navigate('/account-under-review');
+      return null;
+    } catch (error) {
+      console.error('Error checking verification status:', error);
+      navigate('/account-under-review');
+      return null;
+    }
+  };
+
   // Debug function
   const debugBookingsStructure = async () => {
     console.log('🔍 === DEBUG START ===');
@@ -287,6 +318,9 @@ const BabysitterDashboard = () => {
       console.log('👤 Full user data:', userData);
       
       setUser(userData);
+      
+      // Check verification status first
+      checkVerificationStatus(userData.id || userData._id);
       
       // Initialize skills from user profile
       const profile = userData.babysitterProfile || userData;
