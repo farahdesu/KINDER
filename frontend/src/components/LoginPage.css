@@ -1,0 +1,321 @@
+/* LoginPage.css - Material UI Enhanced */
+
+/* Background wrapper - Full page background image only */
+.login-page-wrapper {
+  background-image: url('../assets/KinderBackground.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1a1a1a;
+}
+
+/* Material UI Paper customization */
+.MuiPaper-root {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* TextField customization */
+.MuiTextField-root {
+  margin-bottom: 12px !important;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root {
+  background-color: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root:hover {
+  background-color: #fff;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root.Mui-focused {
+  background-color: #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+.MuiTextField-root .MuiOutlinedInput-notchedOutline {
+  border-color: #ddd;
+}
+
+.MuiTextField-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #333;
+  border-width: 1px;
+}
+
+/* Input label customization */
+.MuiInputLabel-root {
+  color: #666 !important;
+  font-weight: 500 !important;
+}
+
+.MuiInputLabel-root.Mui-focused {
+  color: #333 !important;
+}
+
+/* Toggle button group customization */
+.MuiToggleButtonGroup-root {
+  display: none;
+}
+
+.MuiToggleButton-root {
+  display: none;
+}
+
+/* Button customization */
+.MuiButton-contained {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+.MuiButton-contained:hover:not(:disabled) {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-2px);
+}
+
+.MuiButton-contained:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Checkbox customization */
+.MuiCheckbox-root {
+  color: #333 !important;
+}
+
+.MuiCheckbox-root.Mui-checked {
+  color: #333 !important;
+}
+
+/* Icon button customization */
+.MuiIconButton-root {
+  color: #666 !important;
+  transition: all 0.3s ease !important;
+}
+
+.MuiIconButton-root:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  color: #333 !important;
+}
+
+.MuiIconButton-root:disabled {
+  color: #bbb !important;
+}
+
+/* Link styling */
+a {
+  text-decoration: none;
+  color: #333;
+  transition: all 0.3s ease;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: #666;
+}
+
+/* Typography customization */
+.MuiTypography-h4 {
+  letter-spacing: -0.5px;
+}
+
+.MuiTypography-h5 {
+  letter-spacing: -0.3px;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .MuiContainer-root {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  
+  .MuiPaper-root {
+    padding: 24px !important;
+  }
+  
+  .MuiButton-root {
+    font-size: 0.95rem;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid #333;
+  outline-offset: 2px;
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+input, button, select {
+  transition: all 0.3s ease;
+}
+
+.demo-credentials h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-account {
+  padding: 10px;
+  background: white;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  border: 1px solid #EEE;
+}
+
+.demo-account strong {
+  color: #673AB7;
+  margin-right: 8px;
+}
+
+.demo-credentials small {
+  color: #999;
+  font-size: 12px;
+  display: block;
+  margin-top: 10px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+  }
+  
+  .login-left-panel {
+    padding: 40px 20px;
+    min-height: 40vh;
+  }
+  
+  .login-right-panel {
+    padding: 40px 20px;
+  }
+  
+  .illustration {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .illustration-connector {
+    transform: rotate(90deg);
+  }
+  
+  .user-type-selector {
+    grid-template-columns: 1fr;
+  }
+  
+  .social-login-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .login-right-panel {
+    background: #1A1A1A;
+  }
+  
+  .form-header h2,
+  .user-type-text strong,
+  .form-group label {
+    color: #E0E0E0;
+  }
+  
+  .form-group input {
+    background: #2D2D2D;
+    border-color: #404040;
+    color: #E0E0E0;
+  }
+  
+  .form-group input:focus {
+    background: #333333;
+    border-color: #673AB7;
+  }
+  
+  .social-btn {
+    background: #2D2D2D;
+    border-color: #404040;
+    color: #E0E0E0;
+  }
+  
+  .demo-credentials {
+    background: #2D2D2D;
+    border-color: #404040;
+  }
+  
+  .demo-account {
+    background: #333333;
+    border-color: #404040;
+  }
+}

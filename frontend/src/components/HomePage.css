@@ -1,0 +1,262 @@
+/* HomePage.css */
+
+.home-page {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Blurred Transparent Overlay */
+.page-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  z-index: 5;
+}
+
+.home-content {
+  text-align: center;
+  z-index: 10;
+  max-width: 700px;
+  position: relative;
+  animation: fadeInUp 0.8s ease-out;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 60px 50px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 650px;
+  animation: slideUp 0.8s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Logo Section */
+.logo-section {
+  margin-bottom: 30px;
+}
+
+.logo-image {
+  height: 120px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+  animation: bounceIn 0.8s ease-out;
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.home-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: white;
+  text-shadow: 2px 2px 12px rgba(0, 0, 0, 0.4);
+  margin: 0 0 15px 0;
+  letter-spacing: -1px;
+  line-height: 1.2;
+}
+
+.home-subtitle {
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.98);
+  text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.3);
+  margin: 0 0 50px 0;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.3px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 30px;
+}
+
+.home-btn {
+  display: inline-block;
+  padding: 14px 45px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+  background-color: #333;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.home-btn:hover {
+  background-color: #1a1a1a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.home-btn:active {
+  transform: translateY(0);
+}
+
+.btn {
+  display: inline-block;
+  padding: 16px 48px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  backdrop-filter: blur(10px);
+}
+
+.btn.primary {
+  background-color: #333;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn.primary:hover {
+  background-color: #333;
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+}
+
+.btn.secondary {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+.btn.secondary:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.9);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .logo-image {
+    height: 90px;
+  }
+
+  .home-card {
+    padding: 40px 30px;
+  }
+
+  .home-title {
+    font-size: 2.8rem;
+  }
+
+  .home-subtitle {
+    font-size: 1.3rem;
+    margin-bottom: 30px;
+  }
+
+  .action-buttons {
+    gap: 15px;
+  }
+
+  .home-btn {
+    padding: 12px 35px;
+    font-size: 0.95rem;
+  }
+
+  .btn {
+    padding: 14px 40px;
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-image {
+    height: 70px;
+    margin-bottom: 20px;
+  }
+
+  .home-card {
+    padding: 30px 20px;
+    border-radius: 15px;
+  }
+
+  .home-title {
+    font-size: 2rem;
+  }
+
+  .home-subtitle {
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .home-btn {
+    width: 100%;
+    padding: 12px 30px;
+    font-size: 0.95rem;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px 30px;
+    font-size: 1rem;
+  }
+}
