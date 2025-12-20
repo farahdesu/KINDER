@@ -922,7 +922,7 @@ const handleSubmit = async (e) => {
                         sx={{
                           backgroundColor: '#3d3d3d',
                           borderRadius: 2,
-                          padding: '12px 14px',
+                          padding: '12px 5px',
                           '& .MuiInputBase-root': {
                             color: 'white !important',
                             fontSize: '0.95rem'
@@ -1019,7 +1019,7 @@ const handleSubmit = async (e) => {
                         sx={{
                           backgroundColor: '#3d3d3d',
                           borderRadius: 2,
-                          padding: '12px 14px',
+                          padding: '12px 5px',
                           '& .MuiInputBase-root': {
                             color: 'white !important',
                             fontSize: '0.95rem'
@@ -1065,7 +1065,7 @@ const handleSubmit = async (e) => {
                         sx={{
                           backgroundColor: '#3d3d3d',
                           borderRadius: 2,
-                          padding: '12px 14px',
+                          padding: '12px 5px',
                           '& .MuiInputBase-root': {
                             color: 'white !important',
                             fontSize: '0.95rem'

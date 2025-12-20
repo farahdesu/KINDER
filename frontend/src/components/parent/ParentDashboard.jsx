@@ -524,7 +524,7 @@ const ParentDashboard = () => {
                 padding: '4px 12px',
                 gap: 1
               }}>
-                <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem' }}>৳</Typography>
+                <Typography sx={{ color: 'rgba(53, 228, 100, 0.5)', fontSize: '1.0rem' }}>৳</Typography>
                 <TextField
                   size="small"
                   placeholder="Min"
@@ -533,16 +533,16 @@ const ParentDashboard = () => {
                   sx={{
                     width: 70,
                     '& .MuiOutlinedInput-root': {
-                      color: 'white',
+                      color: 'black',
                       fontWeight: 600,
                       fontSize: '0.9rem',
                       '& fieldset': { border: 'none' },
                       '& input': { padding: '6px 8px', textAlign: 'center' }
                     },
-                    '& input::placeholder': { color: 'rgba(255,255,255,0.5)' }
+                    '& input::placeholder': { color: 'rgba(4, 1, 1, 0.5)' }
                   }}
                 />
-                <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>—</Typography>
+                <Typography sx={{ color: 'rgba(53, 196, 228, 0.5)', fontSize: '0.9rem' }}>—</Typography>
                 <TextField
                   size="small"
                   placeholder="Max"
@@ -551,16 +551,16 @@ const ParentDashboard = () => {
                   sx={{
                     width: 70,
                     '& .MuiOutlinedInput-root': {
-                      color: 'white',
+                      color: 'black',
                       fontWeight: 600,
                       fontSize: '0.9rem',
                       '& fieldset': { border: 'none' },
                       '& input': { padding: '6px 8px', textAlign: 'center' }
                     },
-                    '& input::placeholder': { color: 'rgba(255,255,255,0.5)' }
+                    '& input::placeholder': { color: 'rgba(1, 0, 0, 0.5)' }
                   }}
                 />
-                <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem' }}>/hr</Typography>
+                <Typography sx={{ color: 'rgba(53, 196, 228, 0.5)', fontSize: '0.85rem' }}>/hr</Typography>
               </Box>
             </Box>
 
@@ -708,7 +708,7 @@ const ParentDashboard = () => {
                     color: '#333',
                     fontSize: '1.5rem',
                     fontWeight: 700,
-                    border: '3px solid #FBC02D'
+                    border: '3px solid rgba(251, 192, 45, 1)'
                   }}>
                     {(selectedBabysitter.name || 'B').charAt(0).toUpperCase()}
                   </Avatar>
