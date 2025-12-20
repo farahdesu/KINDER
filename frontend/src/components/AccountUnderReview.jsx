@@ -8,19 +8,21 @@ import {
   Button,
   CircularProgress
 } from '@mui/material';
-import { Logout, Refresh, Email, AccessTime } from '@mui/icons-material';
+import { Logout, Refresh, Email, AccessTime, Delete, Replay } from '@mui/icons-material';
 import KinderBackground from '../assets/KinderBackground.jpg';
 import KinderLogo from '../assets/KinderLogo.png';
+import API from '../services/api';
 
 const AccountUnderReview = () => {
   const [user, setUser] = useState(null);
   const [verificationStatus, setVerificationStatus] = useState('pending');
   const [rejectionReason, setRejectionReason] = useState('');
   const [checking, setChecking] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       const userData = JSON.parse(storedUser);
       setUser(userData);
@@ -33,19 +35,21 @@ const AccountUnderReview = () => {
   const checkVerificationStatus = async (userData) => {
     setChecking(true);
     try {
-      const endpoint = userData.role === 'babysitter' 
-        ? `http://localhost:3001/api/babysitters/verification-status/${userData.id}`
-        : `http://localhost:3001/api/parents/verification-status/${userData.id}`;
-      
-      const response = await fetch(endpoint);
+      // Use the new unified endpoint that checks User.verified directly
+      const response = await fetch(`http://localhost:3000/api/auth/verification-status/${userData.id}`);
       const data = await response.json();
       
       if (data.success) {
-        setVerificationStatus(data.data.verificationStatus);
+        const status = data.data.status; // 'pending', 'approved', or 'rejected'
+        setVerificationStatus(status);
         setRejectionReason(data.data.rejectionReason || '');
         
         // If approved, redirect to dashboard
-        if (data.data.verificationStatus === 'approved') {
+        if (status === 'approved') {
+          // Update localStorage with verified status
+          const updatedUser = { ...userData, verified: true };
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+          
           if (userData.role === 'parent') {
             navigate('/parent-dashboard');
           } else if (userData.role === 'babysitter') {
@@ -60,9 +64,51 @@ const AccountUnderReview = () => {
     }
   };
 
+  const handleReapply = async () => {
+    if (!user?.id) return;
+    
+    setActionLoading(true);
+    try {
+      await API.delete(`/auth/delete-rejected-user/${user.id}`);
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
+      navigate('/register', { 
+        state: { message: 'Your previous account has been removed. You can now register again!' } 
+      });
+    } catch (error) {
+      console.error('Error re-applying:', error);
+      alert('Failed to process. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user?.id) return;
+    
+    if (!window.confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) {
+      return;
+    }
+    
+    setActionLoading(true);
+    try {
+      await API.delete(`/auth/delete-rejected-user/${user.id}`);
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
+      navigate('/login', { 
+        state: { message: 'Your account has been deleted.' } 
+      });
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      alert('Failed to delete account. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
     window.location.href = '/';
   };
 
@@ -134,7 +180,7 @@ const AccountUnderReview = () => {
             </Typography>
 
             <Typography sx={{ color: '#666', marginBottom: 3, fontSize: '1.1rem' }}>
-              We're sorry, but your account registration has been rejected by our administrator.
+              Hello <strong>{user?.name}</strong>, your account registration has been rejected.
             </Typography>
 
             {rejectionReason && (
@@ -156,35 +202,74 @@ const AccountUnderReview = () => {
               </Box>
             )}
 
-            <Typography sx={{ color: '#666', marginBottom: 3 }}>
-              If you believe this is a mistake or need more information, please contact our admin team.
+            <Typography sx={{ color: '#666', marginBottom: 3, fontSize: '0.95rem' }}>
+              You can choose to re-apply with updated information or delete your account.
             </Typography>
 
-            <Button
-              variant="contained"
-              startIcon={<Email />}
-              href="mailto:admin@kinder.com"
-              sx={{
-                backgroundColor: '#667eea',
-                padding: '12px 30px',
-                fontSize: '1rem',
-                fontWeight: 600,
-                marginBottom: 2,
-                '&:hover': { backgroundColor: '#764ba2' }
-              }}
-            >
-              Contact Admin
-            </Button>
+            {/* Action Buttons */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 3 }}>
+              <Button
+                variant="contained"
+                startIcon={actionLoading ? <CircularProgress size={20} color="inherit" /> : <Replay />}
+                onClick={handleReapply}
+                disabled={actionLoading}
+                sx={{
+                  backgroundColor: '#4CAF50',
+                  padding: '14px 30px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  '&:hover': { backgroundColor: '#388E3C' }
+                }}
+              >
+                {actionLoading ? 'Processing...' : 'Re-apply with New Information'}
+              </Button>
+              <Typography sx={{ color: '#888', fontSize: '0.8rem' }}>
+                Your current account will be deleted and you can register again
+              </Typography>
 
-            <Box sx={{ marginTop: 2 }}>
               <Button
                 variant="outlined"
+                startIcon={actionLoading ? <CircularProgress size={20} /> : <Delete />}
+                onClick={handleDeleteAccount}
+                disabled={actionLoading}
+                sx={{
+                  borderColor: '#f44336',
+                  color: '#f44336',
+                  padding: '14px 30px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  '&:hover': { backgroundColor: 'rgba(244,67,54,0.1)' }
+                }}
+              >
+                {actionLoading ? 'Processing...' : 'Delete My Account'}
+              </Button>
+              <Typography sx={{ color: '#888', fontSize: '0.8rem' }}>
+                Permanently delete your account without re-applying
+              </Typography>
+            </Box>
+
+            <Box sx={{ borderTop: '1px solid #eee', paddingTop: 3, marginTop: 2 }}>
+              <Typography sx={{ color: '#666', fontSize: '0.9rem', marginBottom: 2 }}>
+                Have questions? Contact us:
+              </Typography>
+              <Button
+                variant="text"
+                startIcon={<Email />}
+                href="mailto:admin@kinder.com"
+                sx={{ color: '#667eea' }}
+              >
+                admin@kinder.com
+              </Button>
+            </Box>
+
+            <Box sx={{ marginTop: 3 }}>
+              <Button
+                variant="text"
                 startIcon={<Logout />}
                 onClick={handleLogout}
                 sx={{
-                  color: '#666',
-                  borderColor: '#ccc',
-                  '&:hover': { borderColor: '#999', backgroundColor: 'rgba(0,0,0,0.05)' }
+                  color: '#999',
+                  '&:hover': { backgroundColor: 'rgba(0,0,0,0.05)' }
                 }}
               >
                 Logout

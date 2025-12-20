@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs'); // Use bcryptjs consistently
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   // Basic Info
@@ -28,6 +28,12 @@ const userSchema = new mongoose.Schema({
     default: 'parent'
   },
   
+  // Verification status
+  verified: {
+  type: Boolean,
+    default: false
+},
+  
   // Common fields
   phone: String,
   createdAt: {
@@ -39,7 +45,21 @@ const userSchema = new mongoose.Schema({
   resetPasswordToken: String,
   resetPasswordExpires: Date,
   resetCode: String,
-  resetCodeExpires: Date
+  resetCodeExpires: Date,
+  
+  // Rejection tracking
+  isRejected: {
+    type: Boolean,
+    default: false
+  },
+  rejectionReason: {
+    type: String,
+    default: null
+  },
+  rejectionSeenAt: {
+    type: Date,
+    default: null
+  }
 });
 
 // Hash password BEFORE saving

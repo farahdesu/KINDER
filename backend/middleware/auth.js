@@ -16,20 +16,27 @@ const protect = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Get user from token (excluding password)
-      req.user = await User.findById(decoded.id).select('-password');
+      // ✅ FIXED: Use 'id' (not userId or _id) - matches what generateToken signs
+      // NEW (FIXED)
+      const user = await User.findById(decoded.id);
 
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not found in database'
+        });
+      }
+      
+      req.user = user;
       next();
     } catch (error) {
-      console.error('Token verification error:', error);
+      console.error('Token verification error:', error.message);
       return res.status(401).json({
         success: false,
         message: 'Not authorized, token failed'
       });
     }
-  }
-
-  if (!token) {
+  } else {
     return res.status(401).json({
       success: false,
       message: 'Not authorized, no token provided'
@@ -49,7 +56,7 @@ const authorize = (...roles) => {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: `User role ${req.user.role} is not authorized to access this route`
+        message: `User role '${req.user.role}' is not authorized to access this route`
       });
     }
     next();
@@ -58,7 +65,10 @@ const authorize = (...roles) => {
 
 // Admin-only middleware
 const adminOnly = (req, res, next) => {
+  console.log('🔐 AdminOnly check - User:', req.user?.email, 'Role:', req.user?.role);
+  
   if (!req.user) {
+    console.log('❌ AdminOnly: No user found in request');
     return res.status(401).json({
       success: false,
       message: 'Not authorized, user not found'
@@ -66,11 +76,14 @@ const adminOnly = (req, res, next) => {
   }
 
   if (req.user.role !== 'admin') {
+    console.log(`❌ AdminOnly: User ${req.user.email} has role '${req.user.role}', not admin`);
     return res.status(403).json({
       success: false,
       message: 'Access denied. Admin only.'
     });
   }
+  
+  console.log('✅ Admin access granted for:', req.user.email);
   next();
 };
 

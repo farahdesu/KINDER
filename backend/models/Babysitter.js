@@ -81,6 +81,10 @@ const babysitterSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  rejectionSeenAt: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

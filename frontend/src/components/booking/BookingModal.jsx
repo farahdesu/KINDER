@@ -74,8 +74,8 @@ const BookingModal = ({ babysitter, onClose, onConfirm }) => {
   const checkBabysitterAvailability = async (babysitterId, date, startTime, endTime) => {
     try {
       // First, try to get babysitter's existing bookings
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/bookings/babysitter/${babysitterId}`, {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:3000/api/bookings/babysitter/${babysitterId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

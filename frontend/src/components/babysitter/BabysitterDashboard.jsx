@@ -81,8 +81,8 @@ const BabysitterDashboard = () => {
   const buildProfileIdMap = async () => {
     console.log('🗺️ Building profile ID mapping...');
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/babysitters/', {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/babysitters/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -119,7 +119,7 @@ const BabysitterDashboard = () => {
     console.log('📡 Fetching REAL bookings for babysitter USER ID:', babysitterUserId);
     
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       console.log('🔑 Token available:', token ? 'YES' : 'NO');
       
       // First, build or get the profile ID mapping
@@ -156,7 +156,7 @@ const BabysitterDashboard = () => {
       }
       
       // Now fetch bookings
-      const apiUrl = `http://localhost:3001/api/bookings/`;
+      const apiUrl = `http://localhost:3000/api/bookings/`;
       console.log('🌐 Calling bookings API:', apiUrl);
       
       const response = await fetch(apiUrl, {
@@ -231,7 +231,7 @@ const BabysitterDashboard = () => {
   // Check verification status
   const checkVerificationStatus = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/babysitters/verification-status/${userId}`);
+      const response = await fetch(`http://localhost:3000/api/babysitters/verification-status/${userId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -261,8 +261,8 @@ const BabysitterDashboard = () => {
   const debugBookingsStructure = async () => {
     console.log('🔍 === DEBUG START ===');
     try {
-      const token = localStorage.getItem('token');
-      const userData = JSON.parse(localStorage.getItem('user'));
+      const token = sessionStorage.getItem('token');
+      const userData = JSON.parse(sessionStorage.getItem('user'));
       const userId = userData?.id || userData?._id;
       
       console.log('👤 Current User ID:', userId);
@@ -274,7 +274,7 @@ const BabysitterDashboard = () => {
       
       // Fetch and show all babysitters
       console.log('📋 Fetching all babysitters...');
-      const response = await fetch('http://localhost:3001/api/babysitters/', {
+      const response = await fetch('http://localhost:3000/api/babysitters/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -285,7 +285,7 @@ const BabysitterDashboard = () => {
       
       // Fetch and show all bookings
       console.log('📅 Fetching all bookings...');
-      const bookingsResponse = await fetch('http://localhost:3001/api/bookings/', {
+      const bookingsResponse = await fetch('http://localhost:3000/api/bookings/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -305,8 +305,8 @@ const BabysitterDashboard = () => {
   useEffect(() => {
     console.log('=== 🎓 BABYSITTER DASHBOARD LOADING ===');
     
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
+    const storedUser = sessionStorage.getItem('user');
+    const storedToken = sessionStorage.getItem('token');
     
     console.log('📦 Stored user:', storedUser ? 'EXISTS' : 'MISSING');
     console.log('🔑 Stored token:', storedToken ? 'EXISTS' : 'MISSING');
@@ -353,10 +353,10 @@ const BabysitterDashboard = () => {
     }
     
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       console.log('🔑 Using token for API call');
       
-      const response = await fetch(`http://localhost:3001/api/bookings/${id}`, {
+      const response = await fetch(`http://localhost:3000/api/bookings/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -379,7 +379,7 @@ const BabysitterDashboard = () => {
           alert('✅ Booking accepted successfully!');
           
           // Refresh bookings to get latest data
-          const userData = JSON.parse(localStorage.getItem('user'));
+          const userData = JSON.parse(sessionStorage.getItem('user'));
           fetchRealBookings(userData?.id || userData?._id);
         } else {
           alert(`❌ Error: ${data.message}`);
@@ -408,10 +408,10 @@ const BabysitterDashboard = () => {
     }
     
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       console.log('🔑 Using token for API call');
       
-      const response = await fetch(`http://localhost:3001/api/bookings/${id}`, {
+      const response = await fetch(`http://localhost:3000/api/bookings/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -434,7 +434,7 @@ const BabysitterDashboard = () => {
           alert('✅ Booking rejected successfully.');
           
           // Refresh bookings to get latest data
-          const userData = JSON.parse(localStorage.getItem('user'));
+          const userData = JSON.parse(sessionStorage.getItem('user'));
           fetchRealBookings(userData?.id || userData?._id);
         } else {
           alert(`❌ Error: ${data.message}`);
@@ -451,8 +451,8 @@ const BabysitterDashboard = () => {
 
   const handleLogout = () => {
     console.log('👋 Logging out...');
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
     window.location.href = '/';
   };
 
@@ -660,7 +660,7 @@ const BabysitterDashboard = () => {
         {loading ? (
           <div className="loading">
             <p>Loading your bookings...</p>
-            <small>Fetching from: http://localhost:3001/api/bookings/</small>
+            <small>Fetching from: http://localhost:3000/api/bookings/</small>
           </div>
         ) : (
           <div className="bookings-table">
@@ -754,7 +754,7 @@ const BabysitterDashboard = () => {
             className="quick-btn primary" 
             onClick={() => {
               console.log('Refreshing bookings...');
-              const userData = JSON.parse(localStorage.getItem('user'));
+              const userData = JSON.parse(sessionStorage.getItem('user'));
               fetchRealBookings(userData?.id || userData?._id);
             }}
           >
@@ -771,7 +771,7 @@ const BabysitterDashboard = () => {
           <button 
             className="quick-btn info"
             onClick={() => {
-              const userData = JSON.parse(localStorage.getItem('user'));
+              const userData = JSON.parse(sessionStorage.getItem('user'));
               const userId = userData?.id || userData?._id;
               const profileId = profileIdMap[userId];
               alert(`Your IDs:\n\n👤 User ID: ${userId}\n📋 Profile ID: ${profileId || 'Not found'}\n🗺️ Mapping entries: ${Object.keys(profileIdMap).length}\n\nParents use your PROFILE ID when booking.`);

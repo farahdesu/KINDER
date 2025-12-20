@@ -1,4 +1,4 @@
-// backend/controllers/authController.js - COMPLETE VERSION
+// backend/controllers/authController.js - COMPLETE VERSconst userExistsON
 const User = require('../models/User');
 const Babysitter = require('../models/Babysitter');
 const Parent = require('../models/Parent');
@@ -28,11 +28,18 @@ exports.register = async (req, res) => {
     // Check if user exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already exists with this email'
+    // If user is rejected, allow re-application
+      if (userExists.isRejected) {
+        console.log('🔄 Rejected user re-applying:', email);
+      // Continue with registration (will create new user)
+      } else {
+    // Normal user exists - block registration
+        return res.status(400).json({
+          success: false,
+          message: 'User already exists with this email'
       });
     }
+  }
 
     // Role-specific validation
     if (role === 'parent' && !phone) {
@@ -228,6 +235,37 @@ exports.login = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
+      });
+    }
+
+    // ✅ CHECK IF USER IS REJECTED
+    if (user.isRejected) {
+      // Get rejection reason from profile
+      let rejectionReason = 'Your account has been rejected by the admin team.';
+      
+      if (user.role === 'babysitter') {
+        const babysitter = await Babysitter.findOne({ userId: user._id });
+        if (babysitter?.rejectionReason) {
+          rejectionReason = babysitter.rejectionReason;
+        }
+      } else if (user.role === 'parent') {
+        const parent = await Parent.findOne({ userId: user._id });
+        if (parent?.rejectionReason) {
+          rejectionReason = parent.rejectionReason;
+        }
+      }
+
+      return res.status(200).json({
+        success: false,
+        message: 'rejected',
+        data: {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          name: user.name,
+          isRejected: true,
+          rejectionReason: rejectionReason
+        }
       });
     }
 
@@ -448,6 +486,116 @@ exports.resetPasswordWithCode = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error resetting password',
+      error: error.message
+    });
+  }
+};
+
+// Check user verification status (for AccountUnderReview page)
+exports.checkVerificationStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Determine status
+    let status = 'pending';
+    if (user.verified) {
+      status = 'approved';
+    } else if (user.isRejected) {
+      status = 'rejected';
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        userId: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        verified: user.verified,
+        isRejected: user.isRejected,
+        rejectionReason: user.rejectionReason || '',
+        status: status
+      }
+    });
+
+  } catch (error) {
+    console.error('Error checking verification status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error checking verification status',
+      error: error.message
+    });
+  }
+};
+
+// Delete rejected user's account and profile after viewing rejection message
+exports.deleteRejectedUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    // Find the user
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify user is rejected
+    if (!user.isRejected) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not rejected'
+      });
+    }
+
+    const userRole = user.role;
+    const userEmail = user.email;
+
+    // Delete profile based on role
+    if (userRole === 'babysitter') {
+      await Babysitter.findOneAndDelete({ userId: userId });
+    } else if (userRole === 'parent') {
+      await Parent.findOneAndDelete({ userId: userId });
+    }
+
+    // Delete the user account
+    await User.findByIdAndDelete(userId);
+
+    console.log(`✅ Rejected ${userRole} ${userEmail} account and profile deleted`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Your account and all associated data have been deleted',
+      data: {
+        deleted: true,
+        email: userEmail
+      }
+    });
+
+  } catch (error) {
+    console.error('🔥 DELETE REJECTED USER ERROR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting account',
       error: error.message
     });
   }

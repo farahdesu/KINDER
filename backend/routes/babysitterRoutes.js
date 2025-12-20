@@ -6,16 +6,23 @@ const User = require('../models/User');
 // GET /api/babysitters - Get all approved babysitters (for parents to see)
 router.get('/', async (req, res) => {
   try {
-    // Only show babysitters with approved verification status
-    const babysitters = await Babysitter.find({ verificationStatus: 'approved' })
+    // Get all babysitters with user info including verified status
+    const babysitters = await Babysitter.find()
       .populate({
         path: 'userId',
-        select: 'name email phone'
+        select: 'name email phone verified isRejected'
       })
       .select('-__v');
     
+    // Filter to only show babysitters whose USER is verified (approved by admin)
+    const approvedBabysitters = babysitters.filter(bs => {
+      const user = bs.userId;
+      // User must exist, be verified, and not rejected
+      return user && user.verified === true && user.isRejected !== true;
+    });
+    
     // Format the response
-    const formattedBabysitters = babysitters.map(bs => {
+    const formattedBabysitters = approvedBabysitters.map(bs => {
       const user = bs.userId || {};
       return {
         id: bs._id,
@@ -32,7 +39,7 @@ router.get('/', async (req, res) => {
         hourlyRate: bs.hourlyRate || 0,
         rating: bs.rating || 0,
         totalJobs: bs.totalJobs || 0,
-        verificationStatus: bs.verificationStatus,
+        verificationStatus: 'approved', // Only approved ones shown
         createdAt: bs.createdAt
       };
     });
