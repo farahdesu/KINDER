@@ -52,7 +52,33 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      // Try admin login first if email contains 'admin'
+      let response;
+      let data;
+      
+      if (formData.email.toLowerCase().includes('admin')) {
+        // Try admin login endpoint
+        response = await fetch('http://localhost:3000/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password
+          })
+        });
+        data = await response.json();
+        
+        if (data.success) {
+          sessionStorage.setItem('token', data.token);
+          sessionStorage.setItem('user', JSON.stringify(data.user));
+          console.log('✅ Admin login successful');
+          navigate('/admin-dashboard');
+          return;
+        }
+      }
+      
+      // Regular user login
+      response = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -62,11 +88,19 @@ const LoginPage = () => {
         })
       });
 
-      const data = await response.json();
+      data = await response.json();
+      
+      // ✅ CHECK IF USER IS REJECTED
+      if (data.message === 'rejected') {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        navigate('/rejection', { state: { userData: data.data } });
+        return;
+      }
       
       if (data.success) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('user', JSON.stringify(data.user));
         
         // Admin goes directly to dashboard
         if (data.user.role === 'admin') {
@@ -75,15 +109,13 @@ const LoginPage = () => {
         }
         
         // Check verification status for parents and babysitters
-        const verificationEndpoint = data.user.role === 'babysitter'
-          ? `http://localhost:3001/api/babysitters/verification-status/${data.user.id}`
-          : `http://localhost:3001/api/parents/verification-status/${data.user.id}`;
+        const verificationEndpoint = `http://localhost:3000/api/auth/verification-status/${data.user.id}`;
         
         try {
           const verifyRes = await fetch(verificationEndpoint);
           const verifyData = await verifyRes.json();
           
-          if (verifyData.success && verifyData.data.verificationStatus === 'approved') {
+          if (verifyData.success && verifyData.data.status === 'approved') {
             // User is approved, go to their dashboard
             if (data.user.role === 'parent') {
               navigate('/parent-dashboard');

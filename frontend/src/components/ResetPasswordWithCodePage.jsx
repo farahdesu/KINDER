@@ -55,7 +55,7 @@ const ResetPasswordWithCodePage = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/forgot-password', {
+      const response = await fetch('http://localhost:3000/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -86,7 +86,7 @@ const ResetPasswordWithCodePage = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/verify-reset-code', {
+      const response = await fetch('http://localhost:3000/api/auth/verify-reset-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: resetCode })
@@ -126,7 +126,7 @@ const ResetPasswordWithCodePage = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/reset-password-with-code', {
+      const response = await fetch('http://localhost:3000/api/auth/reset-password-with-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -10,9 +10,37 @@ router.get('/', protect, async (req, res) => {
   try {
     let bookings;
     
+    console.log('📋 GET /api/bookings - User:', req.user._id, 'Role:', req.user.role);
+    
     if (req.user.role === 'parent') {
-      // Parent sees their own bookings
-      bookings = await Booking.find({ parentId: req.user._id })
+      // Find the parent profile first
+      const parent = await Parent.findOne({ userId: req.user._id });
+      console.log('📋 Parent profile found:', parent ? parent._id : 'NOT FOUND');
+      console.log('📋 User._id:', req.user._id);
+      
+      // First, let's see all bookings in the system for debugging
+      const allBookings = await Booking.find({});
+      console.log('📋 Total bookings in DB:', allBookings.length);
+      
+      // Build search conditions
+      const searchConditions = [{ parentId: req.user._id }];
+      if (parent) {
+        searchConditions.push({ parentId: parent._id });
+      }
+      
+      // Log all bookings and check for matches
+      for (const b of allBookings) {
+        const parentIdStr = b.parentId ? b.parentId.toString() : 'null';
+        const userIdStr = req.user._id.toString();
+        const parentDocIdStr = parent ? parent._id.toString() : 'no-parent';
+        const matchesUser = parentIdStr === userIdStr;
+        const matchesParent = parent && parentIdStr === parentDocIdStr;
+        console.log(`  - Booking: ${b._id}, parentId: ${parentIdStr}, status: ${b.status}`);
+        console.log(`    Matches User._id: ${matchesUser}, Matches Parent._id: ${matchesParent}`);
+      }
+      
+      // Search by both User's _id and Parent document's _id
+      bookings = await Booking.find({ $or: searchConditions })
         .populate('babysitterId', 'userId')
         .populate({
           path: 'babysitterId',
@@ -22,6 +50,8 @@ router.get('/', protect, async (req, res) => {
           }
         })
         .sort({ date: -1, createdAt: -1 });
+      
+      console.log('📋 Found bookings for this parent:', bookings.length);
     } else if (req.user.role === 'babysitter') {
       // Babysitter sees bookings assigned to them
       const babysitter = await Babysitter.findOne({ userId: req.user._id });
@@ -33,7 +63,13 @@ router.get('/', protect, async (req, res) => {
       }
       
       bookings = await Booking.find({ babysitterId: babysitter._id })
-        .populate('parentId', 'name email phone')
+        .populate({
+          path: 'parentId',
+          populate: {
+            path: 'userId',
+            select: 'name email phone'
+          }
+        })
         .sort({ date: -1, createdAt: -1 });
     } else {
       return res.status(403).json({
@@ -93,9 +129,20 @@ router.post('/', protect, async (req, res) => {
     // Calculate total amount
     const totalAmount = hours * babysitter.hourlyRate;
 
-    // Create booking
+    // Find the Parent document for the current user
+    const parent = await Parent.findOne({ userId: req.user._id });
+    if (!parent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Parent profile not found'
+      });
+    }
+
+    // Create booking using Parent document's _id (for consistency with the ref)
+    console.log('📝 Creating booking - User._id:', req.user._id, 'Parent._id:', parent._id);
+    
     const booking = await Booking.create({
-      parentId: req.user._id,
+      parentId: parent._id,  // Use Parent document's _id, not User's _id
       babysitterId,
       date: new Date(date),
       startTime,
@@ -107,6 +154,8 @@ router.post('/', protect, async (req, res) => {
       status: 'pending',
       paymentStatus: 'pending'
     });
+    
+    console.log('✅ Booking created:', booking._id, 'parentId stored:', booking.parentId);
 
     // Populate the response
     const populatedBooking = await Booking.findById(booking._id)
@@ -234,6 +283,92 @@ router.put('/:id', protect, async (req, res) => {
   }
 });
 
+// GET /api/bookings/parent/:userId - Get bookings for a specific parent
+router.get('/parent/:userId', protect, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    console.log('📋 Fetching bookings for userId:', userId);
+
+    // First try to find by User ID directly (how bookings are created)
+    let bookings = await Booking.find({ parentId: userId })
+      .populate({
+        path: 'babysitterId',
+        populate: {
+          path: 'userId',
+          select: 'name email phone'
+        }
+      })
+      .sort({ createdAt: -1 });
+    
+    console.log('📋 Found by userId:', bookings.length);
+
+    // If no bookings found, also try with Parent document's _id
+    if (bookings.length === 0) {
+      const parent = await Parent.findOne({ userId: userId });
+      if (parent) {
+        bookings = await Booking.find({ parentId: parent._id })
+          .populate({
+            path: 'babysitterId',
+            populate: {
+              path: 'userId',
+              select: 'name email phone'
+            }
+          })
+          .sort({ createdAt: -1 });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      bookings
+    });
+  } catch (error) {
+    console.error('Error fetching parent bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching bookings'
+    });
+  }
+});
+
+// PUT /api/bookings/:id/cancel - Cancel a booking (only pending bookings can be cancelled)
+router.put('/:id/cancel', protect, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Only pending bookings can be cancelled
+    if (booking.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only pending bookings can be cancelled. Confirmed or completed bookings cannot be cancelled.'
+      });
+    }
+
+    booking.status = 'cancelled';
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      booking
+    });
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error cancelling booking'
+    });
+  }
+});
+
 // GET /api/bookings/available-babysitters - Get available babysitters for booking
 router.get('/available-babysitters', protect, async (req, res) => {
   try {
@@ -244,12 +379,20 @@ router.get('/available-babysitters', protect, async (req, res) => {
       });
     }
 
+    // Get all babysitters with their user info
     const babysitters = await Babysitter.find()
-      .populate('userId', 'name email phone')
+      .populate('userId', 'name email phone verified isRejected')
       .select('-__v')
       .sort({ rating: -1, hourlyRate: 1 });
 
-    const formattedBabysitters = babysitters.map(bs => {
+    // Filter to only show VERIFIED babysitters (approved by admin)
+    const verifiedBabysitters = babysitters.filter(bs => {
+      const user = bs.userId;
+      // Only include if user exists, is verified, and not rejected
+      return user && user.verified === true && user.isRejected !== true;
+    });
+
+    const formattedBabysitters = verifiedBabysitters.map(bs => {
       const user = bs.userId || {};
       return {
         id: bs._id,

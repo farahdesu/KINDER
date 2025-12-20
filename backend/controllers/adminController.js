@@ -1,4 +1,3 @@
-// backend/controllers/adminController.js
 const User = require('../models/User');
 const Babysitter = require('../models/Babysitter');
 const Parent = require('../models/Parent');
@@ -15,7 +14,6 @@ exports.createAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Validate required fields
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -23,7 +21,6 @@ exports.createAdmin = async (req, res) => {
       });
     }
 
-    // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -32,7 +29,6 @@ exports.createAdmin = async (req, res) => {
       });
     }
 
-    // Validate password length
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
@@ -40,12 +36,12 @@ exports.createAdmin = async (req, res) => {
       });
     }
 
-    // Create new admin user
     const newAdmin = await User.create({
       name,
       email,
-      password, // Will be hashed by pre-save hook
-      role: 'admin'
+      password,
+      role: 'admin',
+      verified: true
     });
 
     console.log(`✅ NEW ADMIN CREATED: ${email} by ${req.user.email}`);
@@ -63,7 +59,7 @@ exports.createAdmin = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('🔥 CREATE ADMIN ERROR:', error);
+    console.error('Error creating admin:', error);
     res.status(500).json({
       success: false,
       message: 'Error creating admin',
@@ -75,8 +71,6 @@ exports.createAdmin = async (req, res) => {
 // Admin Login
 exports.adminLogin = async (req, res) => {
   try {
-    console.log('🔐 ADMIN LOGIN REQUEST:', req.body);
-    
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -86,7 +80,6 @@ exports.adminLogin = async (req, res) => {
       });
     }
 
-    // Find admin user
     const user = await User.findOne({ email, role: 'admin' }).select('+password');
     
     if (!user) {
@@ -96,7 +89,6 @@ exports.adminLogin = async (req, res) => {
       });
     }
 
-    // Check password
     const isPasswordCorrect = await user.comparePassword(password);
     
     if (!isPasswordCorrect) {
@@ -106,10 +98,9 @@ exports.adminLogin = async (req, res) => {
       });
     }
 
-    // Generate token
     const token = generateToken(user._id);
 
-    console.log('✅ ADMIN LOGIN SUCCESS:', user.email);
+    console.log(`✅ ADMIN LOGIN SUCCESS: ${user.email}`);
     
     res.status(200).json({
       success: true,
@@ -125,7 +116,7 @@ exports.adminLogin = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('🔥 ADMIN LOGIN ERROR:', error);
+    console.error('Error during admin login:', error);
     res.status(500).json({
       success: false,
       message: 'Server error during admin login',
@@ -137,48 +128,39 @@ exports.adminLogin = async (req, res) => {
 // Get Dashboard Statistics
 exports.getDashboardStats = async (req, res) => {
   try {
-    // Get counts based on actual profiles (more accurate)
     const totalParents = await Parent.countDocuments();
     const totalBabysitters = await Babysitter.countDocuments();
-    const totalUsers = totalParents + totalBabysitters; // Sum of actual profiles
+    const totalUsers = totalParents + totalBabysitters;
     const totalAdmins = await User.countDocuments({ role: 'admin' });
     const totalBookings = await Booking.countDocuments();
     
-    // Get booking statistics
     const pendingBookings = await Booking.countDocuments({ status: 'pending' });
     const confirmedBookings = await Booking.countDocuments({ status: 'confirmed' });
     const completedBookings = await Booking.countDocuments({ status: 'completed' });
     const cancelledBookings = await Booking.countDocuments({ status: 'cancelled' });
 
-    // Get babysitters pending verification
-    const pendingVerifications = await Babysitter.countDocuments({ verificationStatus: 'pending' });
+    const pendingVerifications = await User.countDocuments({
+      role: { $in: ['parent', 'babysitter'] },
+      verified: false
+    });
 
-    // Get recent bookings
     const recentBookings = await Booking.find()
       .sort({ createdAt: -1 })
       .limit(5)
       .populate({
         path: 'parentId',
-        populate: {
-          path: 'userId',
-          select: 'name email'
-        }
+        populate: { path: 'userId', select: 'name email' }
       })
       .populate({
         path: 'babysitterId',
-        populate: {
-          path: 'userId',
-          select: 'name email'
-        }
+        populate: { path: 'userId', select: 'name email' }
       });
 
-    // Get recent users
     const recentUsers = await User.find({ role: { $ne: 'admin' } })
       .sort({ createdAt: -1 })
       .limit(5)
       .select('-password');
 
-    // Calculate total revenue (from completed bookings)
     const revenueData = await Booking.aggregate([
       { $match: { status: 'completed' } },
       { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' } } }
@@ -207,7 +189,7 @@ exports.getDashboardStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('🔥 DASHBOARD STATS ERROR:', error);
+    console.error('Error fetching dashboard stats:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching dashboard statistics',
@@ -221,7 +203,7 @@ exports.getAllUsers = async (req, res) => {
   try {
     const { role, search, page = 1, limit = 10 } = req.query;
     
-    let query = { role: { $ne: 'admin' } }; // Exclude admin users
+    let query = { role: { $ne: 'admin' } };
     
     if (role && role !== 'all') {
       query.role = role;
@@ -242,7 +224,6 @@ exports.getAllUsers = async (req, res) => {
 
     const total = await User.countDocuments(query);
 
-    // Get additional profile info for each user
     const usersWithProfiles = await Promise.all(
       users.map(async (user) => {
         let profile = null;
@@ -271,7 +252,7 @@ exports.getAllUsers = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('🔥 GET ALL USERS ERROR:', error);
+    console.error('Error fetching users:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching users',
@@ -297,17 +278,11 @@ exports.getAllBookings = async (req, res) => {
       .limit(parseInt(limit))
       .populate({
         path: 'parentId',
-        populate: {
-          path: 'userId',
-          select: 'name email phone'
-        }
+        populate: { path: 'userId', select: 'name email phone' }
       })
       .populate({
         path: 'babysitterId',
-        populate: {
-          path: 'userId',
-          select: 'name email'
-        }
+        populate: { path: 'userId', select: 'name email' }
       });
 
     const total = await Booking.countDocuments(query);
@@ -325,7 +300,7 @@ exports.getAllBookings = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('🔥 GET ALL BOOKINGS ERROR:', error);
+    console.error('Error fetching bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching bookings',
@@ -337,58 +312,58 @@ exports.getAllBookings = async (req, res) => {
 // Get Pending Verifications (Both Parents and Babysitters)
 exports.getPendingVerifications = async (req, res) => {
   try {
-    // Get all babysitters with pending verification status
-    const babysitters = await Babysitter.find({ verificationStatus: 'pending' })
-      .populate('userId', 'name email phone createdAt')
-      .sort({ createdAt: -1 });
-
-    // Get all parents with pending verification status
-    const parents = await Parent.find({ verificationStatus: 'pending' })
-      .populate('userId', 'name email phone createdAt')
-      .sort({ createdAt: -1 });
-
-    // Format babysitters with type
-    const formattedBabysitters = babysitters.map(b => ({
-      _id: b._id,
-      type: 'babysitter',
-      userId: b.userId,
-      university: b.university,
-      studentId: b.studentId,
-      department: b.department,
-      year: b.year,
-      hourlyRate: b.hourlyRate,
-      experience: b.experience,
-      verificationStatus: b.verificationStatus,
-      createdAt: b.createdAt
-    }));
-
-    // Format parents with type
-    const formattedParents = parents.map(p => ({
-      _id: p._id,
-      type: 'parent',
-      userId: p.userId,
-      address: p.address,
-      children: p.children,
-      verificationStatus: p.verificationStatus,
-      createdAt: p.createdAt
-    }));
-
-    // Combine and sort by creation date
-    const allPending = [...formattedBabysitters, ...formattedParents]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Only get users who are NOT verified AND NOT rejected (truly pending)
+    const unverifiedUsers = await User.find({
+      role: { $in: ['parent', 'babysitter'] },
+      verified: false,
+      isRejected: { $ne: true }  // Exclude rejected users
+    }).sort({ createdAt: -1 }).select('-password');
+    
+    const pendingVerifications = await Promise.all(
+      unverifiedUsers.map(async (user) => {
+        if (user.role === 'babysitter') {
+          const profile = await Babysitter.findOne({ userId: user._id });
+          return {
+            _id: user._id,
+            type: 'babysitter',
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            university: profile?.university || '',
+            studentId: profile?.studentId || '',
+            department: profile?.department || '',
+            year: profile?.year || '',
+            hourlyRate: profile?.hourlyRate || 0,
+            skills: profile?.skills || [],
+            experience: profile?.experience || '',
+            createdAt: user.createdAt
+          };
+        } else {
+          const profile = await Parent.findOne({ userId: user._id });
+          return {
+            _id: user._id,
+            type: 'parent',
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            address: profile?.address || '',
+            children: profile?.children || [],
+            createdAt: user.createdAt
+          };
+        }
+      })
+    );
 
     res.status(200).json({
       success: true,
-      data: allPending,
+      data: pendingVerifications,
       counts: {
-        babysitters: babysitters.length,
-        parents: parents.length,
-        total: allPending.length
+        total: pendingVerifications.length
       }
     });
 
   } catch (error) {
-    console.error('🔥 GET PENDING VERIFICATIONS ERROR:', error);
+    console.error('Error fetching pending verifications:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching pending verifications',
@@ -397,88 +372,78 @@ exports.getPendingVerifications = async (req, res) => {
   }
 };
 
-// Verify User (Approve or Reject - works for both babysitters and parents)
+// ✅ VERIFY USER (CRITICAL FIX - Works for both babysitters and parents)
 exports.verifyUser = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // USER ID from User collection
     const { verified, rejectionReason, userType } = req.body;
 
-    let profile;
-    let Model;
-
-    if (userType === 'babysitter') {
-      Model = Babysitter;
-      profile = await Babysitter.findById(id).populate('userId', 'name email');
-    } else if (userType === 'parent') {
-      Model = Parent;
-      profile = await Parent.findById(id).populate('userId', 'name email');
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid user type. Must be "babysitter" or "parent"'
-      });
-    }
-    
-    if (!profile) {
+    // 1. Find the main user
+    const user = await User.findById(id);
+    if (!user) {
       return res.status(404).json({
         success: false,
-        message: `${userType} not found`
+        message: 'User not found'
       });
     }
 
-    const userName = profile.userId?.name || 'Unknown';
-    const userEmail = profile.userId?.email || 'Unknown';
-    const mainUserId = profile.userId?._id;
+    // 2. Update user's verified status
+    user.verified = verified === true || verified === 'true';
+    
+    if (!user.verified && rejectionReason) {
+      user.isRejected = true;
+      user.rejectionReason = rejectionReason;
+      user.rejectionSeenAt = null; // Will be set when user views rejection
+    } else if (user.verified) {
+      user.isRejected = false;
+      user.rejectionReason = null;
+    }
 
-    if (verified) {
-      // APPROVED: Update verification status
-      profile.verificationStatus = 'approved';
-      profile.verificationDate = new Date();
-      await profile.save();
+    await user.save();
 
-      console.log(`✅ ${userType} ${userName} has been APPROVED`);
+    // 3. Also update profile if exists
+    if (userType === 'babysitter') {
+      await Babysitter.findOneAndUpdate(
+        { userId: id },
+        { 
+          verificationStatus: user.verified ? 'approved' : 'rejected',
+          verificationDate: new Date(),
+          rejectionReason: user.verified ? null : rejectionReason
+        },
+        { new: true }
+      );
+    } else if (userType === 'parent') {
+      await Parent.findOneAndUpdate(
+        { userId: id },
+        { 
+          verificationStatus: user.verified ? 'approved' : 'rejected',
+          verificationDate: new Date(),
+          rejectionReason: user.verified ? null : rejectionReason
+        },
+        { new: true }
+      );
+    }
 
-      res.status(200).json({
-        success: true,
-        message: `${userType.charAt(0).toUpperCase() + userType.slice(1)} approved and can now access their dashboard`,
-        data: {
-          id: profile._id,
-          type: userType,
-          name: userName,
-          email: userEmail,
-          verificationStatus: 'approved',
-          verificationDate: profile.verificationDate
-        }
-      });
-    } else {
-      // REJECTED: Delete the user completely from database
-      
-      // Delete the profile (Babysitter or Parent)
-      await Model.findByIdAndDelete(id);
-      
-      // Delete the main User account
-      if (mainUserId) {
-        await User.findByIdAndDelete(mainUserId);
+    const action = user.verified ? 'APPROVED' : 'REJECTED';
+    console.log(`✅ User ${user.name} (${userType}) ${action}`);
+
+    res.status(200).json({
+      success: true,
+      message: `User ${user.verified ? 'approved' : 'rejected'} successfully`,
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        verified: user.verified,
+        isRejected: user.isRejected,
+        rejectionReason: user.rejectionReason,
+        userType
       }
-
-      console.log(`❌ ${userType} ${userName} has been REJECTED and DELETED from database`);
-
-      res.status(200).json({
-        success: true,
-        message: `${userType.charAt(0).toUpperCase() + userType.slice(1)} rejected and removed from the system${rejectionReason ? `. Reason: ${rejectionReason}` : ''}`,
-        data: {
-          id: id,
-          type: userType,
-          name: userName,
-          email: userEmail,
-          verificationStatus: 'rejected',
-          deleted: true
-        }
-      });
-    }
+    });
 
   } catch (error) {
-    console.error('🔥 VERIFY USER ERROR:', error);
+    console.error('Error verifying user:', error);
     res.status(500).json({
       success: false,
       message: 'Error verifying user',
@@ -487,42 +452,143 @@ exports.verifyUser = async (req, res) => {
   }
 };
 
-// Legacy endpoint - Verify Babysitter (for backwards compatibility)
+// Legacy endpoint - Verify Babysitter
 exports.verifyBabysitter = async (req, res) => {
   req.body.userType = 'babysitter';
   req.params.id = req.params.babysitterId;
   return exports.verifyUser(req, res);
 };
 
-// Get Babysitter Verification Status (for babysitter dashboard)
-exports.getBabysitterVerificationStatus = async (req, res) => {
+// Get Verification Status for current user
+exports.getMyVerificationStatus = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user._id;
     
-    const babysitter = await Babysitter.findOne({ userId })
-      .select('verificationStatus verificationDate rejectionReason');
+    const user = await User.findById(userId).select('verified isRejected rejectionReason role');
     
-    if (!babysitter) {
+    if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'Babysitter profile not found'
+        message: 'User not found'
       });
+    }
+
+    let profileData = null;
+    if (user.role === 'babysitter') {
+      profileData = await Babysitter.findOne({ userId }).select('verificationStatus verificationDate rejectionReason');
+    } else if (user.role === 'parent') {
+      profileData = await Parent.findOne({ userId }).select('verificationStatus verificationDate rejectionReason');
     }
 
     res.status(200).json({
       success: true,
       data: {
-        verificationStatus: babysitter.verificationStatus,
-        verificationDate: babysitter.verificationDate,
-        rejectionReason: babysitter.rejectionReason
+        verified: user.verified,
+        isRejected: user.isRejected,
+        rejectionReason: user.rejectionReason,
+        verificationStatus: profileData?.verificationStatus || 'pending',
+        verificationDate: profileData?.verificationDate
       }
     });
 
   } catch (error) {
-    console.error('🔥 GET VERIFICATION STATUS ERROR:', error);
+    console.error('Error fetching verification status:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching verification status',
+      error: error.message
+    });
+  }
+};
+
+// Update User (Admin can edit user info)
+exports.updateUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { 
+      name, email, phone, 
+      // Parent fields
+      address,
+      // Babysitter fields
+      university, studentId, department, year, hourlyRate, experience, skills
+    } = req.body;
+
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot edit admin user from this endpoint'
+      });
+    }
+
+    // Check for duplicate email (if email is being changed)
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ email, _id: { $ne: userId } });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email already in use by another user'
+        });
+      }
+    }
+
+    // Update user fields
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+
+    await user.save();
+
+    // Update profile based on role
+    if (user.role === 'parent') {
+      const updateData = {};
+      if (address !== undefined) updateData.address = address;
+      
+      if (Object.keys(updateData).length > 0) {
+        await Parent.findOneAndUpdate({ userId }, updateData);
+      }
+    } else if (user.role === 'babysitter') {
+      const updateData = {};
+      if (university !== undefined) updateData.university = university;
+      if (studentId !== undefined) updateData.studentId = studentId;
+      if (department !== undefined) updateData.department = department;
+      if (year !== undefined) updateData.year = parseInt(year);
+      if (hourlyRate !== undefined) updateData.hourlyRate = parseFloat(hourlyRate);
+      if (experience !== undefined) updateData.experience = experience;
+      if (skills !== undefined) updateData.skills = Array.isArray(skills) ? skills : skills.split(',').map(s => s.trim());
+      
+      if (Object.keys(updateData).length > 0) {
+        await Babysitter.findOneAndUpdate({ userId }, updateData);
+      }
+    }
+
+    console.log(`✅ User ${user.email} updated by admin`);
+
+    res.status(200).json({
+      success: true,
+      message: 'User updated successfully',
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user',
       error: error.message
     });
   }
@@ -549,14 +615,12 @@ exports.deleteUser = async (req, res) => {
       });
     }
 
-    // Delete associated profile
     if (user.role === 'babysitter') {
-      await Babysitter.deleteOne({ userId: user._id });
+      await Babysitter.deleteOne({ userId });
     } else if (user.role === 'parent') {
-      await Parent.deleteOne({ userId: user._id });
+      await Parent.deleteOne({ userId });
     }
 
-    // Delete user
     await User.deleteOne({ _id: userId });
 
     res.status(200).json({
@@ -565,7 +629,7 @@ exports.deleteUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('🔥 DELETE USER ERROR:', error);
+    console.error('Error deleting user:', error);
     res.status(500).json({
       success: false,
       message: 'Error deleting user',
@@ -599,7 +663,7 @@ exports.updateBookingStatus = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('🔥 UPDATE BOOKING STATUS ERROR:', error);
+    console.error('Error updating booking status:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating booking status',
@@ -607,4 +671,3 @@ exports.updateBookingStatus = async (req, res) => {
     });
   }
 };
-

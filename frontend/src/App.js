@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import RegisterForm from './components/RegisterForm';
@@ -13,6 +13,7 @@ import ParentBookingsPage from './components/parent/ParentBookingsPage';
 import ParentProfilePage from './components/parent/ParentProfilePage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AccountUnderReview from './components/AccountUnderReview';
+import RejectionPage from './components/RejectionPage';
 import './App.css';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordWithCodePage />} />
+            <Route path="/rejection" element={<RejectionPage />} />
             <Route path="/parent-dashboard" element={<ParentDashboard />} />
             <Route path="/babysitter-dashboard" element={<BabysitterDashboard />} />
             <Route path="/book-babysitter/:babysitterId" element={<BookBabysitterPage />} />

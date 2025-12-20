@@ -14,7 +14,7 @@ const app = express();
 // MIDDLEWARE
 // ====================
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'http://localhost:3001',
   credentials: true
 }));
 app.use(express.json());
@@ -30,6 +30,10 @@ const babysitterRoutes = require('./routes/babysitterRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const parentRoutes = require('./routes/parentRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 // ====================
 // ROUTES
@@ -37,20 +41,22 @@ const parentRoutes = require('./routes/parentRoutes');
 
 // 1. Root route
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'KINDER API is running!',
     status: 'success',
     time: new Date().toISOString(),
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     available_endpoints: [
       '/api/auth/register',
-      '/api/auth/login', 
+      '/api/auth/login',
       '/api/auth/users',
       '/api/babysitters',
       '/api/bookings',
       '/api/bookings/available-babysitters',
       '/api/admin/login',
-      '/api/admin/dashboard'
+      '/api/admin/dashboard',
+      '/api/notifications',
+      '/api/payments'
     ]
   });
 });
@@ -61,7 +67,7 @@ app.get('/api/test', (req, res) => {
     success: true,
     message: '✅ Backend API is connected successfully!',
     server: 'KINDER Babysitter Platform API',
-    port: process.env.PORT || 3001,
+    port: process.env.PORT || 3000,
     timestamp: new Date().toISOString(),
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     endpoints: {
@@ -107,10 +113,22 @@ app.use('/api/admin', adminRoutes);
 // 8. Parent routes
 app.use('/api/parents', parentRoutes);
 
+// 9. Review routes
+app.use('/api/reviews', reviewRoutes);
+
+// 10. Report routes
+app.use('/api/reports', reportRoutes);
+
+// 11. Notification routes
+app.use('/api/notifications', notificationRoutes);
+
+// 12. Payment routes
+app.use('/api/payments', paymentRoutes);
+
 // Test if routes are loaded
 app.get('/api/routes', (req, res) => {
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: 'All routes loaded!',
     routes: {
       auth: ['/register (POST)', '/login (POST)', '/users (GET)'],
@@ -147,17 +165,19 @@ app.use((err, req, res, next) => {
 // ====================
 // START SERVER
 // ====================
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`=================================`);
   console.log(`🚀 Server running on: http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🌐 CORS enabled for: http://localhost:3000`);
+  console.log(`🌐 CORS enabled for: http://localhost:3001`);
   console.log(`👤 Auth routes: /api/auth/register, /api/auth/login`);
   console.log(`👶 Babysitter routes: /api/babysitters`);
   console.log(`📅 Booking routes: /api/bookings`);
   console.log(`👨‍💼 Admin routes: /api/admin/login, /api/admin/dashboard`);
-  console.log(`📋 Total endpoints: 15+`);
+  console.log(`🔔 Notification routes: /api/notifications`);
+  console.log(`💳 Payment routes: /api/payments`);
+  console.log(`📋 Total endpoints: 60+`);
   console.log(`=================================`);
 });

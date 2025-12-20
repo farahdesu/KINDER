@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import KinderLogo from '../assets/KinderLogo.png';
 import {
@@ -146,7 +146,7 @@ const RegisterForm = () => {
     try {
       console.log("Sending to backend:", formData);
       
-      const response = await fetch("http://localhost:3001/api/auth/register", {
+      const response = await fetch("http://localhost:3000/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
