@@ -739,6 +739,23 @@ const ParentDashboard = () => {
                   {selectedBabysitter.experience && (
                     <Typography sx={{ mb: 0.5 }}><strong>Experience:</strong> {selectedBabysitter.experience}</Typography>
                   )}
+                  <Box sx={{ mt: 2 }}>
+                    <Typography sx={{ mb: 1, fontWeight: 600, color: '#333' }}>Skills:</Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {(Array.isArray(selectedBabysitter.skills) ? selectedBabysitter.skills : []).map((skill, idx) => (
+                        <Chip 
+                          key={idx} 
+                          label={skill} 
+                          size="small" 
+                          sx={{ 
+                            backgroundColor: '#03A9F4', 
+                            color: 'white',
+                            fontWeight: 600
+                          }} 
+                        />
+                      ))}
+                    </Box>
+                  </Box>
                 </Box>
               </Box>
             )}

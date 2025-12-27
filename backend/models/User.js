@@ -36,6 +36,7 @@ const userSchema = new mongoose.Schema({
   
   // Common fields
   phone: String,
+  address: String,
   createdAt: {
     type: Date,
     default: Date.now

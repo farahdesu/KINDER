@@ -267,6 +267,28 @@ const BookBabysitterPage = () => {
     return null;
   };
 
+  // Function to check if time slot is within babysitter's free time
+  const isWithinBabysitterAvailability = () => {
+    if (!babysitter || !date) return false;
+    
+    const selectedDate = new Date(date);
+    const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()];
+    const freeSlots = babysitter.availability?.[dayOfWeek] || [];
+    
+    if (!freeSlots || freeSlots.length === 0) return false;
+    
+    // Check if requested time falls within any free slot
+    const timeSlotOverlaps = (start1, end1, start2, end2) => {
+      const s1 = parseInt(start1.replace(':', ''));
+      const e1 = parseInt(end1.replace(':', ''));
+      const s2 = parseInt(start2.replace(':', ''));
+      const e2 = parseInt(end2.replace(':', ''));
+      return !(e1 <= s2 || e2 <= s1);
+    };
+    
+    return freeSlots.some(slot => timeSlotOverlaps(startTime, endTime, slot.start, slot.end));
+  };
+
   // Check availability when form changes
   useEffect(() => {
     if (!babysitter || !date) return;
@@ -280,6 +302,12 @@ const BookBabysitterPage = () => {
     const validationError = validateTimeSelection();
     if (validationError) {
       setAvailabilityMessage(validationError);
+      return;
+    }
+
+    // Check if time is within babysitter's free time slots
+    if (!isWithinBabysitterAvailability()) {
+      setAvailabilityMessage('❌ This time is outside babysitter\'s available hours on this day');
       return;
     }
 
@@ -317,7 +345,7 @@ const BookBabysitterPage = () => {
     return Math.abs(endHour - startHour);
   };
 
-  // Handle form submit
+    // Handle form submit
 const handleSubmit = async (e) => {
   e.preventDefault();
   setError('');
@@ -342,11 +370,48 @@ const handleSubmit = async (e) => {
     return;
   }
 
+  // Check if time is within babysitter's availability
+  if (!isWithinBabysitterAvailability()) {
+      setError('This time is outside babysitter\'s available hours on this day');
+    setSubmitting(false);
+    return;
+  }
+
     if (!address.trim()) {
       setError('Please enter your address');
       setSubmitting(false);
       return;
     }
+
+  // Check availability with the backend
+  try {
+    const token = sessionStorage.getItem('token');
+    const formattedDate = new Date(date).toISOString().split('T')[0];
+    const availabilityResponse = await fetch(
+      `http://localhost:3000/api/bookings/check-availability/${babysitter._id || babysitter.id}?date=${formattedDate}&startTime=${startTime}&endTime=${endTime}`,
+      {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }
+    );
+
+    const availabilityData = await availabilityResponse.json();
+    if (!availabilityData.available) {
+      let errorMsg = availabilityData.message || 'Time slot is not available';
+      if (availabilityData.reason === 'no_free_slots') {
+        errorMsg = 'Babysitter is not available on this day';
+      } else if (availabilityData.reason === 'outside_available_hours') {
+        errorMsg = 'This time is outside babysitter\'s available hours';
+      } else if (availabilityData.reason === 'time_conflict') {
+        errorMsg = 'This time slot is already booked or pending';
+      }
+      setError(errorMsg);
+      setSubmitting(false);
+      return;
+    }
+  } catch (err) {
+    console.error('Error checking availability:', err);
+    // Continue anyway, let server validate
+  }
 
   const formattedDate = new Date(date).toISOString().split('T')[0];
   const bookingData = {
@@ -373,7 +438,7 @@ const handleSubmit = async (e) => {
       const data = await response.json();
 
     if (data.success) {
-      alert('✅ Booking request sent successfully! Waiting for babysitter confirmation.');
+      alert('Booking request sent successfully! Waiting for babysitter confirmation.');
       navigate('/parent-dashboard');
     } else {
       setError(data.message || 'Booking failed. Please try again.');
