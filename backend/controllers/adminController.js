@@ -141,7 +141,8 @@ exports.getDashboardStats = async (req, res) => {
 
     const pendingVerifications = await User.countDocuments({
       role: { $in: ['parent', 'babysitter'] },
-      verified: false
+      verified: false,
+      isRejected: { $ne: true }
     });
 
     const recentBookings = await Booking.find()

@@ -76,7 +76,7 @@ const AdminDashboard = () => {
   const [userStatusFilter, setUserStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [bookingsPage, setBookingsPage] = useState(0);
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 10;
   const navigate = useNavigate();
 
   // Pink/Magenta theme color (matching the admin icon)
@@ -96,7 +96,7 @@ const AdminDashboard = () => {
       const urls = [
         `http://localhost:3000/api/admin/dashboard`,
         `http://localhost:3000/api/admin/users?limit=100`,
-        `http://localhost:3000/api/admin/bookings`,
+        `http://localhost:3000/api/admin/bookings?limit=100`,
         `http://localhost:3000/api/admin/verifications`
       ];
 
