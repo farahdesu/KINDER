@@ -21,7 +21,11 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton
+  IconButton,
+  Card,
+  FormControl,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Logout,
@@ -62,6 +66,19 @@ const BabysitterDashboard = () => {
   const [openEditProfileDialog, setOpenEditProfileDialog] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ name: '', phone: '', address: '' });
   const [editLoading, setEditLoading] = useState(false);
+  const [openAvailabilityDialog, setOpenAvailabilityDialog] = useState(false);
+  const [availability, setAvailability] = useState({
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+    saturday: [],
+    sunday: []
+  });
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
+  const [openParentDetailsDialog, setOpenParentDetailsDialog] = useState(false);
+  const [selectedParentDetails, setSelectedParentDetails] = useState(null);
   const navigate = useNavigate();
 
   // Theme color for babysitters - Yellow
@@ -84,6 +101,7 @@ const BabysitterDashboard = () => {
     if (window.confirm(`Remove "${skillToRemove}" from your skills?`)) {
       const updatedSkills = skills.filter(skill => skill !== skillToRemove);
       setSkills(updatedSkills);
+      saveSkillsToBackend(updatedSkills);
       console.log('Skill removed:', skillToRemove);
     }
   };
@@ -106,9 +124,49 @@ const BabysitterDashboard = () => {
       return;
     }
     
-    setSkills([...skills, skill]);
+    const updatedSkills = [...skills, skill];
+    setSkills(updatedSkills);
     setNewSkill('');
+    saveSkillsToBackend(updatedSkills);
     console.log('Skill added:', skill);
+  };
+
+  const saveSkillsToBackend = async (skillsArray) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/babysitters/skills', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ skills: skillsArray })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Skills saved to backend:', data);
+        
+        // Update session storage to persist the skills across page refreshes
+        const storedUser = sessionStorage.getItem('user');
+        if (storedUser) {
+          const updatedUser = JSON.parse(storedUser);
+          if (!updatedUser.babysitterProfile) {
+            updatedUser.babysitterProfile = {};
+          }
+          updatedUser.babysitterProfile.skills = skillsArray;
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+          console.log('Session storage updated with new skills:', skillsArray);
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Error saving skills:', errorData.message);
+        alert('Failed to save skills: ' + (errorData.message || 'Server error'));
+      }
+    } catch (error) {
+      console.error('Error saving skills to backend:', error);
+      alert('Failed to save skills. Please try again.');
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -247,7 +305,7 @@ const BabysitterDashboard = () => {
             // Transform API data to frontend format
             const formattedBookings = babysitterBookings.map(booking => ({
               id: booking._id,
-              parent: booking.parentId?.name || booking.parentId?.username || booking.parentName || 'Parent',
+              parent: booking.parentId?.userId?.name || booking.parentId?.name || booking.parentName || 'Parent',
               date: booking.date ? new Date(booking.date).toLocaleDateString() : 'No date',
               time: `${booking.startTime || '00:00'} - ${booking.endTime || '00:00'}`,
               hours: booking.hours || calculateHours(booking.startTime, booking.endTime),
@@ -280,6 +338,49 @@ const BabysitterDashboard = () => {
       console.error('Network error fetching bookings:', error);
       setBookings([]);
       setLoading(false);
+    }
+  };
+
+  // Fetch fresh babysitter profile from backend to ensure skills are up-to-date
+  const fetchBabysitterProfile = async (userId) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/babysitters/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched current babysitter profile:', data.babysitter);
+        
+        if (data.babysitter) {
+          const babysitterProfile = data.babysitter;
+          
+          // Update session storage with fresh skills
+          const storedUser = sessionStorage.getItem('user');
+          if (storedUser) {
+            const updatedUser = JSON.parse(storedUser);
+            updatedUser.babysitterProfile = {
+              ...updatedUser.babysitterProfile,
+              skills: babysitterProfile.skills
+            };
+            sessionStorage.setItem('user', JSON.stringify(updatedUser));
+            
+            // Update local skills state
+            const fetchedSkills = Array.isArray(babysitterProfile.skills) ? 
+              babysitterProfile.skills : 
+              ['Childcare', 'Homework Help', 'First Aid'];
+            setSkills(fetchedSkills);
+            
+            console.log('Profile refreshed with latest skills:', fetchedSkills);
+          }
+        }
+      } else {
+        console.error('Failed to fetch babysitter profile');
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      // Silently fail - use session storage skills
     }
   };
 
@@ -333,7 +434,10 @@ const BabysitterDashboard = () => {
       // Check verification status first
       checkVerificationStatus(userData.id || userData._id);
       
-      // Initialize skills from user profile
+      // Fetch fresh babysitter profile from backend to ensure latest skills
+      fetchBabysitterProfile(userData.id || userData._id);
+      
+      // Initialize skills from user profile (will be updated by fetchBabysitterProfile)
       const profile = userData.babysitterProfile || userData;
       const initialSkills = Array.isArray(profile.skills) ? 
         profile.skills.flatMap(skill => 
@@ -582,6 +686,105 @@ const BabysitterDashboard = () => {
     }
   };
 
+  const handleOpenAvailabilityDialog = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:3000/api/babysitters/me/availability`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailability(data.availability || {
+          monday: [],
+          tuesday: [],
+          wednesday: [],
+          thursday: [],
+          friday: [],
+          saturday: [],
+          sunday: []
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching availability:', error);
+    }
+    setOpenAvailabilityDialog(true);
+  };
+
+  const handleSaveAvailability = async () => {
+    setAvailabilitySaving(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:3000/api/babysitters/availability`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ availability })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setOpenAvailabilityDialog(false);
+        alert('Availability updated successfully!');
+      } else {
+        alert(data.message || 'Failed to update availability');
+      }
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      alert('Error updating availability');
+    } finally {
+      setAvailabilitySaving(false);
+    }
+  };
+
+  // View parent details
+  const handleViewParentDetails = (booking) => {
+    // Extract parent phone from the nested API response structure
+    const parentPhone = booking._raw?.parentId?.userId?.phone || 
+                       booking._raw?.parentId?.phone ||
+                       booking._raw?.parentPhone || 
+                       'Not provided';
+    
+    setSelectedParentDetails({
+      name: booking.parent || 'Parent',
+      address: booking._raw?.address || 'Not provided',
+      phone: parentPhone,
+      date: booking.date,
+      time: booking.time,
+      specialInstructions: booking._raw?.specialInstructions || 'None'
+    });
+    setOpenParentDetailsDialog(true);
+  };
+
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  
+  // Pre-defined quick time slots for easy selection
+  const quickTimeSlots = [
+    { label: 'Morning', start: '09:00', end: '12:00' },
+    { label: 'Afternoon', start: '14:00', end: '17:00' },
+    { label: 'Evening', start: '18:00', end: '21:00' }
+  ];
+  
+  // Generate time options from 8 AM to 10 PM (22:00) in 1-hour intervals
+  const generateTimeOptions = () => {
+    const options = [];
+    for (let hour = 8; hour <= 22; hour++) {
+      const time = `${String(hour).padStart(2, '0')}:00`;
+      const ampm = hour < 12 ? 'AM' : hour === 12 ? 'PM' : 'PM';
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      options.push({
+        value: time,
+        label: `${displayHour}:00 ${ampm}`
+      });
+    }
+    return options;
+  };
+  
+  const timeOptions = generateTimeOptions();
+
   return (
     <Box sx={{
       minHeight: '100vh',
@@ -633,6 +836,20 @@ const BabysitterDashboard = () => {
               </Box>
             </Box>
             <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="contained"
+                startIcon={<Event />}
+                onClick={handleOpenAvailabilityDialog}
+                sx={{
+                  backgroundColor: '#f5eb33ff',
+                  color: '#111', // 👈 black text & icon
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { backgroundColor: '#1976D2' }
+                }}
+              >
+                Set Schedule
+              </Button>
               <Button
                 variant="contained"
                 startIcon={<Edit />}
@@ -950,9 +1167,10 @@ const BabysitterDashboard = () => {
                             {booking.status === 'confirmed' && (
                               <IconButton
                                 size="small"
-                                title="Message Parent"
+                                onClick={() => handleViewParentDetails(booking)}
+                                title="View Parent Details"
                               >
-                                <MessageIcon sx={{ color: '#2196F3', fontSize: 20 }} />
+                                <Person sx={{ color: '#2196F3', fontSize: 20 }} />
                               </IconButton>
                             )}
                             {booking.status === 'completed' && (
@@ -1034,6 +1252,406 @@ const BabysitterDashboard = () => {
               sx={{ backgroundColor: themeColor, color: '#333', '&:hover': { backgroundColor: themeColorDark } }}
             >
               {editLoading ? <CircularProgress size={24} color="inherit" /> : 'Save Changes'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Availability/Schedule Dialog - Redesigned with Card Grid Layout */}
+        <Dialog 
+          open={openAvailabilityDialog} 
+          onClose={() => setOpenAvailabilityDialog(false)} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 2 } }}
+        >
+          <DialogTitle sx={{ backgroundColor: '#2196F3', color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1, fontSize: '1.3rem' }}>
+            <Event /> Set Your Weekly Availability
+          </DialogTitle>
+          <DialogContent sx={{ paddingTop: 3, backgroundColor: '#f5f5f5' }}>
+            <Typography sx={{ mb: 2, color: 'rgba(0,0,0,0.7)', fontSize: '0.95rem', fontWeight: 500 }}>
+              Set your available time slots for each day. Parents will only be able to book you during these times.
+            </Typography>
+            
+            {/* Quick Time Slots Selection */}
+            <Box sx={{ mb: 4, p: 2.5, backgroundColor: 'white', borderRadius: 2, border: '2px solid #FF9800' }}>
+              <Typography sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: '#333' }}>
+                ⚡ Quick Add Time Slots
+              </Typography>
+              <Typography sx={{ fontSize: '0.85rem', color: 'rgba(0,0,0,0.6)', mb: 2 }}>
+                Select a pre-defined time slot and it will be added to all selected days:
+              </Typography>
+              
+              <Grid container spacing={1.5} sx={{ mb: 2 }}>
+                {quickTimeSlots.map((slot, idx) => (
+                  <Grid item xs={4} key={idx}>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={() => {
+                        const daysToAdd = days.filter(day => {
+                          // Add to days that don't already have this exact slot
+                          return !(availability[day] || []).some(s => s.start === slot.start && s.end === slot.end);
+                        });
+                        
+                        if (daysToAdd.length === 0) {
+                          alert('This slot already exists in all days');
+                          return;
+                        }
+                        
+                        const newAvailability = { ...availability };
+                        daysToAdd.forEach(day => {
+                          newAvailability[day] = [...(newAvailability[day] || []), { start: slot.start, end: slot.end }];
+                        });
+                        setAvailability(newAvailability);
+                        alert(`Added ${slot.label} (${slot.start}-${slot.end}) to ${daysToAdd.length} days`);
+                      }}
+                      sx={{
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        color: '#FF9800',
+                        borderColor: '#FF9800',
+                        backgroundColor: 'rgba(255, 152, 0, 0.05)',
+                        fontSize: '0.9rem',
+                        py: 1.5,
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 152, 0, 0.15)',
+                          borderColor: '#F57C00'
+                        }
+                      }}
+                    >
+                      <Box>
+                        <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>{slot.label}</Typography>
+                        <Typography sx={{ fontSize: '0.75rem', opacity: 0.8 }}>{slot.start}-{slot.end}</Typography>
+                      </Box>
+                    </Button>
+                  </Grid>
+                ))}
+              </Grid>
+              <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255, 152, 0, 0.8)', fontStyle: 'italic' }}>
+                💡 Tip: Quick slots are added to all days that don't already have this exact time slot
+              </Typography>
+            </Box>
+            
+            <Grid container spacing={2.5}>
+              {days.map((day) => {
+                const daySlots = availability[day] || [];
+                return (
+                  <Grid item xs={12} sm={6} key={day}>
+                    <Card sx={{ 
+                      p: 2.5, 
+                      border: '2px solid #2196F3',
+                      borderRadius: 2,
+                      backgroundColor: 'white',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        boxShadow: '0 8px 24px rgba(33, 150, 243, 0.3)',
+                        transform: 'translateY(-2px)'
+                      }
+                    }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography sx={{ fontWeight: 700, textTransform: 'capitalize', color: '#333', fontSize: '1.1rem' }}>
+                          {day}
+                        </Typography>
+                        <Typography sx={{ 
+                          fontSize: '0.8rem',
+                          backgroundColor: '#2196F3',
+                          color: 'white',
+                          padding: '4px 12px',
+                          borderRadius: 20,
+                          fontWeight: 600
+                        }}>
+                          {daySlots.length} slot{daySlots.length !== 1 ? 's' : ''}
+                        </Typography>
+                      </Box>
+                      
+                      {/* Display existing slots */}
+                      {daySlots.length > 0 ? (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
+                          {daySlots.map((slot, idx) => (
+                            <Box
+                              key={idx}
+                              sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                backgroundColor: 'rgba(33, 150, 243, 0.08)',
+                                padding: '10px 12px',
+                                borderRadius: 1,
+                                border: '1px solid rgba(33, 150, 243, 0.3)',
+                                transition: 'all 0.2s ease',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(33, 150, 243, 0.15)',
+                                }
+                              }}
+                            >
+                              <Typography sx={{ fontWeight: 600, color: '#1976D2', fontSize: '0.95rem' }}>
+                                {slot.start} — {slot.end}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  const updated = daySlots.filter((_, i) => i !== idx);
+                                  setAvailability({ ...availability, [day]: updated });
+                                }}
+                                sx={{ 
+                                  color: '#F44336',
+                                  '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
+                                }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Box>
+                          ))}
+                        </Box>
+                      ) : (
+                        <Typography sx={{ 
+                          fontSize: '0.85rem', 
+                          color: 'rgba(0,0,0,0.4)', 
+                          mb: 2,
+                          fontStyle: 'italic',
+                          textAlign: 'center',
+                          padding: '12px'
+                        }}>
+                          No slots added yet
+                        </Typography>
+                      )}
+                      
+                      {/* Custom Time Slot Input with Dropdowns */}
+                      <Box sx={{ 
+                        display: 'flex', 
+                        gap: 1, 
+                        flexWrap: 'wrap',
+                        mt: 2,
+                        pt: 2,
+                        borderTop: '1px solid rgba(33, 150, 243, 0.2)'
+                      }}>
+                        <FormControl size="small" sx={{ flex: 1, minWidth: '100px' }}>
+                          <Typography sx={{ fontSize: '0.8rem', color: '#666', mb: 0.5, fontWeight: 600 }}>
+                            Start Time
+                          </Typography>
+                          <Select
+                            value={availability[day]?.__startTime || ''}
+                            onChange={(e) => {
+                              // Store temp start time for UI purposes
+                              const newAvail = { ...availability };
+                              if (!newAvail[day]) newAvail[day] = [];
+                              newAvail[day].__startTime = e.target.value;
+                              setAvailability(newAvail);
+                            }}
+                            sx={{
+                              backgroundColor: 'white',
+                              color: '#333',
+                              fontWeight: 600,
+                              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#2196F3' },
+                              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976D2' },
+                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#1976D2' },
+                              '& .MuiSvgIcon-root': { color: '#2196F3' }
+                            }}
+                            MenuProps={{
+                              PaperProps: {
+                                sx: {
+                                  backgroundColor: 'white',
+                                  maxHeight: '300px',
+                                  '& .MuiMenuItem-root': {
+                                    color: '#333',
+                                    fontWeight: 600,
+                                    '&:hover': { backgroundColor: 'rgba(33, 150, 243, 0.1)' },
+                                    '&.Mui-selected': { backgroundColor: 'rgba(33, 150, 243, 0.2)' }
+                                  }
+                                }
+                              }
+                            }}
+                          >
+                            <MenuItem value=""><em>Select start time...</em></MenuItem>
+                            {timeOptions.map((opt) => (
+                              <MenuItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        
+                        <FormControl size="small" sx={{ flex: 1, minWidth: '100px' }}>
+                          <Typography sx={{ fontSize: '0.8rem', color: '#666', mb: 0.5, fontWeight: 600 }}>
+                            End Time
+                          </Typography>
+                          <Select
+                            value={availability[day]?.__endTime || ''}
+                            onChange={(e) => {
+                              // Store temp end time for UI purposes
+                              const newAvail = { ...availability };
+                              if (!newAvail[day]) newAvail[day] = [];
+                              newAvail[day].__endTime = e.target.value;
+                              setAvailability(newAvail);
+                            }}
+                            sx={{
+                              backgroundColor: 'white',
+                              color: '#333',
+                              fontWeight: 600,
+                              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#2196F3' },
+                              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976D2' },
+                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#1976D2' },
+                              '& .MuiSvgIcon-root': { color: '#2196F3' }
+                            }}
+                            MenuProps={{
+                              PaperProps: {
+                                sx: {
+                                  backgroundColor: 'white',
+                                  maxHeight: '300px',
+                                  '& .MuiMenuItem-root': {
+                                    color: '#333',
+                                    fontWeight: 600,
+                                    '&:hover': { backgroundColor: 'rgba(33, 150, 243, 0.1)' },
+                                    '&.Mui-selected': { backgroundColor: 'rgba(33, 150, 243, 0.2)' }
+                                  }
+                                }
+                              }
+                            }}
+                          >
+                            <MenuItem value=""><em>Select end time...</em></MenuItem>
+                            {timeOptions.map((opt) => (
+                              <MenuItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<AddIcon />}
+                          onClick={() => {
+                            const startTime = availability[day]?.__startTime;
+                            const endTime = availability[day]?.__endTime;
+                            
+                            if (!startTime || !endTime) {
+                              alert('Please select both start and end times');
+                              return;
+                            }
+                            
+                            if (startTime >= endTime) {
+                              alert('End time must be after start time');
+                              return;
+                            }
+                            
+                            const newSlot = { start: startTime, end: endTime };
+                            const newDaySlots = (availability[day] || []).filter(s => s.start && s.end);
+                            const updated = [...newDaySlots, newSlot];
+                            
+                            const newAvail = { ...availability };
+                            newAvail[day] = updated;
+                            delete newAvail[day].__startTime;
+                            delete newAvail[day].__endTime;
+                            setAvailability(newAvail);
+                          }}
+                          sx={{ 
+                            backgroundColor: '#2196F3',
+                            color: 'white',
+                            fontWeight: 600,
+                            alignSelf: 'flex-end',
+                            '&:hover': { backgroundColor: '#1976D2' }
+                          }}
+                        >
+                          Add Slot
+                        </Button>
+                      </Box>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ padding: 2.5, backgroundColor: '#f5f5f5' }}>
+            <Button 
+              onClick={() => setOpenAvailabilityDialog(false)}
+              sx={{ color: '#666', fontWeight: 600 }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={handleSaveAvailability}
+              disabled={availabilitySaving}
+              sx={{ 
+                backgroundColor: '#2196F3', 
+                fontWeight: 600,
+                '&:hover': { backgroundColor: '#1976D2' },
+                '&:disabled': { backgroundColor: '#ccc' }
+              }}
+            >
+              {availabilitySaving ? <CircularProgress size={24} color="inherit" /> : 'Save Schedule'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Parent Details Dialog */}
+        <Dialog 
+          open={openParentDetailsDialog} 
+          onClose={() => setOpenParentDetailsDialog(false)} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 2 } }}
+        >
+          <DialogTitle sx={{ backgroundColor: '#03A9F4', color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Person /> Parent Booking Details
+          </DialogTitle>
+          <DialogContent sx={{ paddingTop: 3 }}>
+            {selectedParentDetails && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box>
+                  <Typography sx={{ fontSize: '0.85rem', color: 'rgba(0,0,0,0.6)', fontWeight: 600 }}>
+                    Parent Name
+                  </Typography>
+                  <Typography sx={{ fontSize: '1rem', color: '#333', fontWeight: 700 }}>
+                    {selectedParentDetails.name}
+                  </Typography>
+                </Box>
+                
+                <Box>
+                  <Typography sx={{ fontSize: '0.85rem', color: 'rgba(0,0,0,0.6)', fontWeight: 600 }}>
+                    Phone Number
+                  </Typography>
+                  <Typography sx={{ fontSize: '1rem', color: '#333', fontWeight: 700 }}>
+                    {selectedParentDetails.phone}
+                  </Typography>
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontSize: '0.85rem', color: 'rgba(0,0,0,0.6)', fontWeight: 600 }}>
+                    Address
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.95rem', color: '#333' }}>
+                    {selectedParentDetails.address}
+                  </Typography>
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontSize: '0.85rem', color: 'rgba(0,0,0,0.6)', fontWeight: 600 }}>
+                    Booking Date & Time
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.95rem', color: '#333' }}>
+                    {selectedParentDetails.date} - {selectedParentDetails.time}
+                  </Typography>
+                </Box>
+
+                {selectedParentDetails.specialInstructions && selectedParentDetails.specialInstructions !== 'None' && (
+                  <Box>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'rgba(0,0,0,0.6)', fontWeight: 600 }}>
+                      Special Instructions
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.95rem', color: '#333' }}>
+                      {selectedParentDetails.specialInstructions}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ padding: 2 }}>
+            <Button onClick={() => setOpenParentDetailsDialog(false)} sx={{ color: '#03A9F4' }}>
+              Close
             </Button>
           </DialogActions>
         </Dialog>
