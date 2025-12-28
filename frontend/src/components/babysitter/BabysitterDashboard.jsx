@@ -311,6 +311,7 @@ const BabysitterDashboard = () => {
               hours: booking.hours || calculateHours(booking.startTime, booking.endTime),
               amount: booking.totalAmount || booking.amount || calculateAmount(booking, user?.babysitterProfile?.hourlyRate),
               status: booking.status || 'pending',
+              paymentStatus: booking.paymentStatus || 'pending',
               children: booking.children || booking.numberOfChildren || booking.specialInstructions || 'Not specified',
               _raw: booking
             }));
@@ -884,7 +885,7 @@ const BabysitterDashboard = () => {
           {/* Stats Cards */}
           <Grid container spacing={2} sx={{ marginBottom: 3 }}>
             {[
-              { icon: <AttachMoney />, label: 'Total Earnings', value: bookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + (b.amount || 0), 0) + ' BDT', color: '#4CAF50' },
+              { icon: <AttachMoney />, label: 'Total Earnings', value: Math.round(bookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + (b.amount || 0), 0) * 0.8) + ' BDT', color: '#4CAF50' },
               { icon: <Pending />, label: 'Pending Requests', value: bookings.filter(b => b.status === 'pending').length, color: '#FF9800' },
               { icon: <CheckCircle />, label: 'Confirmed Jobs', value: bookings.filter(b => b.status === 'confirmed').length, color: themeColor },
               { icon: <Event />, label: 'Total Jobs', value: bookings.length, color: '#03A9F4' }
@@ -1073,6 +1074,7 @@ const BabysitterDashboard = () => {
                       <TableCell sx={{ fontWeight: 700, color: '#333', borderBottom: 'none', py: 1.5 }}>Children</TableCell>
                       <TableCell sx={{ fontWeight: 700, color: '#333', borderBottom: 'none', py: 1.5 }}>Amount</TableCell>
                       <TableCell sx={{ fontWeight: 700, color: '#333', borderBottom: 'none', py: 1.5 }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 700, color: '#333', borderBottom: 'none', py: 1.5 }}>Payment</TableCell>
                       <TableCell sx={{ fontWeight: 700, color: '#333', borderBottom: 'none', py: 1.5 }}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -1116,7 +1118,10 @@ const BabysitterDashboard = () => {
                         </TableCell>
                         <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                           <Typography sx={{ fontWeight: 700, color: '#4CAF50', fontSize: '0.95rem' }}>
-                            {booking.amount} BDT
+                            ৳{Math.round((booking.amount || 0) * 0.8)}
+                          </Typography>
+                          <Typography sx={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', marginTop: 0.5 }}>
+                            (80% of ৳{booking.amount})
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
@@ -1143,6 +1148,39 @@ const BabysitterDashboard = () => {
                                 'rgba(244, 67, 54, 0.5)'
                             }}
                           />
+                        </TableCell>
+                        <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {booking.paymentStatus === 'paid' ? (
+                              <>
+                                <CheckCircle sx={{ color: '#4CAF50', fontSize: 20 }} />
+                                <Chip
+                                  label="Received"
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                                    color: '#4CAF50',
+                                    fontWeight: 600,
+                                    border: '1px solid #4CAF50'
+                                  }}
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <AttachMoney sx={{ color: '#FF9800', fontSize: 20 }} />
+                                <Chip
+                                  label="Pending"
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                                    color: '#FF9800',
+                                    fontWeight: 600,
+                                    border: '1px solid #FF9800'
+                                  }}
+                                />
+                              </>
+                            )}
+                          </Box>
                         </TableCell>
                         <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                           <Box sx={{ display: 'flex', gap: 0.5 }}>

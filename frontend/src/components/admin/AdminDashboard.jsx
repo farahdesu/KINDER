@@ -604,7 +604,8 @@ const handleVerifyUser = async (userId, verified, userType) => {
               { icon: <Event />, label: 'Total Bookings', value: stats.totalBookings || 0, color: '#2196F3' },
                 { icon: <Warning />, label: 'Pending', value: stats.pendingBookings || 0, color: '#FFC107' },
                 { icon: <VerifiedUser />, label: 'Verifications', value: stats.pendingVerifications || 0, color: '#9C27B0' },
-                { icon: <AttachMoney />, label: 'Revenue', value: `৳${stats.totalRevenue || 0}`, color: '#00BCD4' }
+                { icon: <AttachMoney />, label: 'Revenue', value: `৳${stats.totalRevenue || 0}`, color: '#00BCD4' },
+                { icon: <AttachMoney />, label: 'Platform Earnings', value: `৳${stats.platformEarnings || 0}`, color: '#FF6F00' }
             ].map((stat, idx) => (
                 <Grid item xs={6} sm={4} md={3} lg={1.5} key={idx}>
                   <Box sx={{ ...darkGlassStyle, padding: 2, textAlign: 'center' }}>

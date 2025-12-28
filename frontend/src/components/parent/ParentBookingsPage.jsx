@@ -29,7 +29,9 @@ import {
   CheckCircle,
   AccessTime,
   Person,
-  AttachMoney
+  AttachMoney,
+  CreditCard,
+  CheckCircleOutline
 } from '@mui/icons-material';
 import KinderLogo from '../../assets/KinderLogo.png';
 import KinderBackground from '../../assets/KinderBackground.jpg';
@@ -40,6 +42,8 @@ const ParentBookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
+  const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const navigate = useNavigate();
 
   // Theme color for parents - Sky Blue
@@ -86,23 +90,87 @@ const ParentBookingsPage = () => {
 
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`http://localhost:3000/api/bookings/${bookingId}/cancel`, {
+      const response = await fetch(`http://localhost:3000/api/bookings/${bookingId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'cancelled' })
       });
       const data = await response.json();
       
       if (data.success) {
         alert('Booking cancelled successfully');
-        fetchBookings(user.id);
+        fetchBookings();
       } else {
         alert(data.message || 'Failed to cancel booking');
       }
     } catch (error) {
       console.error('Error cancelling booking:', error);
       alert('Error cancelling booking');
+    }
+  };
+
+  const handleCompleteBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to mark this booking as completed?')) return;
+
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:3000/api/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'completed' })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Booking marked as completed');
+        fetchBookings();
+      } else {
+        alert(data.message || 'Failed to mark booking as completed');
+      }
+    } catch (error) {
+      console.error('Error marking booking as completed:', error);
+      alert('Error marking booking as completed');
+    }
+  };
+
+  const handleMakePayment = async () => {
+    if (!selectedBooking) return;
+    if (!window.confirm('Confirm payment of ৳' + selectedBooking.totalAmount + '?')) return;
+
+    setPaymentLoading(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/payments', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          bookingId: selectedBooking._id,
+          paymentMethod: 'cash'
+        })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Payment completed successfully!');
+        setOpenPaymentDialog(false);
+        fetchBookings();
+      } else {
+        alert(data.message || 'Failed to process payment');
+      }
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      alert('Error processing payment');
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -115,6 +183,15 @@ const ParentBookingsPage = () => {
       rejected: '#f44336'
     };
     return colors[status] || '#9E9E9E';
+  };
+
+  const getPaymentStatusColor = (paymentStatus) => {
+    const colors = {
+      pending: '#FF9800',
+      paid: '#4CAF50',
+      refunded: '#9E9E9E'
+    };
+    return colors[paymentStatus] || '#9E9E9E';
   };
 
   // Glass style
@@ -258,6 +335,7 @@ const ParentBookingsPage = () => {
                       <TableCell sx={{ fontWeight: 700, color: 'white', borderBottom: 'none', py: 1.5 }}>Time</TableCell>
                       <TableCell sx={{ fontWeight: 700, color: 'white', borderBottom: 'none', py: 1.5 }}>Amount</TableCell>
                       <TableCell sx={{ fontWeight: 700, color: 'white', borderBottom: 'none', py: 1.5 }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 700, color: 'white', borderBottom: 'none', py: 1.5 }}>Payment</TableCell>
                       <TableCell sx={{ fontWeight: 700, color: 'white', borderBottom: 'none', py: 1.5 }}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -313,6 +391,37 @@ const ParentBookingsPage = () => {
                           />
                         </TableCell>
                         <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {booking.paymentStatus === 'paid' ? (
+                              <>
+                                <CheckCircleOutline sx={{ color: '#4CAF50', fontSize: 20 }} />
+                                <Chip
+                                  label="Paid"
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: getPaymentStatusColor(booking.paymentStatus),
+                                    color: 'white',
+                                    fontWeight: 600
+                                  }}
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <CreditCard sx={{ color: '#FF9800', fontSize: 20 }} />
+                                <Chip
+                                  label="Due"
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: getPaymentStatusColor(booking.paymentStatus),
+                                    color: 'white',
+                                    fontWeight: 600
+                                  }}
+                                />
+                              </>
+                            )}
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                           <IconButton
                             size="small"
                             onClick={() => { setSelectedBooking(booking); setOpenDetailsDialog(true); }}
@@ -327,6 +436,24 @@ const ParentBookingsPage = () => {
                               title="Cancel Booking"
                             >
                               <Cancel sx={{ color: '#FF5252', fontSize: 22 }} />
+                            </IconButton>
+                          )}
+                          {booking.status === 'confirmed' && (
+                            <IconButton
+                              size="small"
+                              onClick={() => handleCompleteBooking(booking._id)}
+                              title="Mark as Completed"
+                            >
+                              <CheckCircle sx={{ color: '#4CAF50', fontSize: 22 }} />
+                            </IconButton>
+                          )}
+                          {booking.status === 'completed' && booking.paymentStatus !== 'paid' && (
+                            <IconButton
+                              size="small"
+                              onClick={() => { setSelectedBooking(booking); setOpenPaymentDialog(true); }}
+                              title="Make Payment"
+                            >
+                              <CreditCard sx={{ color: '#FF9800', fontSize: 22 }} />
                             </IconButton>
                           )}
                         </TableCell>
@@ -432,6 +559,105 @@ const ParentBookingsPage = () => {
                 Cancel Booking
               </Button>
             )}
+            {selectedBooking && selectedBooking.status === 'confirmed' && (
+              <Button 
+                variant="contained" 
+                sx={{ backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
+                onClick={() => { setOpenDetailsDialog(false); handleCompleteBooking(selectedBooking._id); }}
+              >
+                Mark as Completed
+              </Button>
+            )}
+          </DialogActions>
+        </Dialog>
+
+        {/* Payment Modal */}
+        <Dialog 
+          open={openPaymentDialog} 
+          onClose={() => setOpenPaymentDialog(false)} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 2 } }}
+        >
+          <DialogTitle sx={{ backgroundColor: '#FF9800', color: 'white', fontWeight: 700 }}>
+            Make Payment
+          </DialogTitle>
+          <DialogContent sx={{ paddingTop: 3 }}>
+            {selectedBooking && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Box sx={{ 
+                  backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                  borderLeft: '4px solid #FF9800',
+                  padding: 2,
+                  borderRadius: 1
+                }}>
+                  <Typography sx={{ color: '#666', fontSize: '0.9rem', marginBottom: 1 }}>
+                    Booking #{selectedBooking._id?.slice(-6)}
+                  </Typography>
+                  <Typography sx={{ fontWeight: 600, color: '#333' }}>
+                    {selectedBooking.babysitterId?.userId?.name || 'Babysitter'} - {new Date(selectedBooking.date).toLocaleDateString()}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ 
+                  backgroundColor: '#f5f5f5',
+                  padding: 2,
+                  borderRadius: 2,
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, paddingBottom: 2, borderBottom: '1px solid #ddd' }}>
+                    <Typography sx={{ color: '#666' }}>Total Amount:</Typography>
+                    <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#333' }}>
+                      ৳{selectedBooking.totalAmount || 0}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1.5 }}>
+                    <Typography sx={{ color: '#666', fontSize: '0.9rem' }}>Platform Fee (20%):</Typography>
+                    <Typography sx={{ fontWeight: 600, color: '#FF9800' }}>
+                      ৳{Math.round((selectedBooking.totalAmount || 0) * 0.2)}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography sx={{ color: '#666', fontSize: '0.9rem' }}>Babysitter Receives (80%):</Typography>
+                    <Typography sx={{ fontWeight: 600, color: '#4CAF50' }}>
+                      ৳{Math.round((selectedBooking.totalAmount || 0) * 0.8)}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ 
+                  backgroundColor: '#e3f2fd',
+                  padding: 2,
+                  borderRadius: 1,
+                  border: '1px solid #90caf9'
+                }}>
+                  <Typography sx={{ fontSize: '0.85rem', color: '#1976d2' }}>
+                    <strong>💳 Payment Method:</strong> Cash
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.85rem', color: '#1976d2', marginTop: 0.5 }}>
+                    The payment will be marked as completed after confirmation.
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ padding: 2, gap: 1 }}>
+            <Button 
+              onClick={() => setOpenPaymentDialog(false)} 
+              sx={{ color: '#666' }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              sx={{ backgroundColor: '#FF9800', '&:hover': { backgroundColor: '#f57c00' } }}
+              onClick={handleMakePayment}
+              disabled={paymentLoading}
+            >
+              {paymentLoading ? 'Processing...' : 'Confirm Payment'}
+            </Button>
           </DialogActions>
         </Dialog>
 

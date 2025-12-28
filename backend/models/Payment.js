@@ -16,62 +16,51 @@ const paymentSchema = new mongoose.Schema({
     ref: 'Babysitter',
     required: true
   },
-  amount: {
+  totalAmount: {
     type: Number,
     required: true,
     min: 0
   },
-  prepaymentPercentage: {
+  platformFee: {
     type: Number,
-    default: 50, // 50% prepayment
-    min: 0,
-    max: 100
+    required: true // 20% of totalAmount
   },
-  prepaymentAmount: {
+  babysitterEarnings: {
     type: Number,
-    required: true
-  },
-  remainingAmount: {
-    type: Number,
-    required: true
+    required: true // 80% of totalAmount
   },
   paymentMethod: {
     type: String,
-    enum: ['bkash', 'nagad', 'card', 'bank_transfer', 'cash'],
-    required: true
+    enum: ['cash', 'card', 'mobile_banking'],
+    default: 'cash'
   },
-  transactionId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  prepaymentStatus: {
+  status: {
     type: String,
     enum: ['pending', 'completed', 'failed', 'refunded'],
     default: 'pending'
   },
-  finalPaymentStatus: {
-    type: String,
-    enum: ['pending', 'completed', 'failed', 'refunded'],
-    default: 'pending'
+  paidAt: {
+    type: Date,
+    default: null
   },
-  prepaymentDate: {
-    type: Date
-  },
-  finalPaymentDate: {
-    type: Date
-  },
-  refundReason: {
+  notes: {
     type: String,
     default: ''
-  },
-  refundDate: {
-    type: Date
   },
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
+});
+
+// Update timestamp on save
+paymentSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
 });
 
 module.exports = mongoose.model('Payment', paymentSchema);

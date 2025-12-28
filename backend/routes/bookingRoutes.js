@@ -347,8 +347,14 @@ router.put('/:id', protect, async (req, res) => {
         }
       }
     } else if (req.user.role === 'parent') {
-      // Parent can only cancel their own bookings
-      if (booking.parentId.toString() !== req.user._id.toString()) {
+      // Parent can cancel pending bookings or mark confirmed bookings as completed
+      // Check authorization: booking should belong to this parent (either by User ID or Parent document ID)
+      const parent = await Parent.findOne({ userId: req.user._id });
+      const isAuthorized = 
+        booking.parentId.toString() === req.user._id.toString() ||
+        (parent && booking.parentId.toString() === parent._id.toString());
+      
+      if (!isAuthorized) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to update this booking'
@@ -357,10 +363,12 @@ router.put('/:id', protect, async (req, res) => {
       
       if (status === 'cancelled' && booking.status === 'pending') {
         // Parent can cancel pending bookings
+      } else if (status === 'completed' && booking.status === 'confirmed') {
+        // Parent can mark confirmed bookings as completed
       } else {
         return res.status(403).json({
           success: false,
-          message: 'Parent can only cancel pending bookings'
+          message: 'Parent can only cancel pending bookings or mark confirmed bookings as completed'
         });
       }
     } else {
@@ -372,8 +380,9 @@ router.put('/:id', protect, async (req, res) => {
 
     // Update booking
     booking.status = status;
-    if (status === 'completed') {
-      booking.paymentStatus = 'paid';
+    // When marking as completed, set paymentStatus to 'pending' (due) if not already set
+    if (status === 'completed' && !booking.paymentStatus) {
+      booking.paymentStatus = 'pending';
     }
     
     await booking.save();

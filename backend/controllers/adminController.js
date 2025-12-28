@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Babysitter = require('../models/Babysitter');
 const Parent = require('../models/Parent');
 const Booking = require('../models/Booking');
+const Payment = require('../models/Payment');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -168,6 +169,13 @@ exports.getDashboardStats = async (req, res) => {
     ]);
     const totalRevenue = revenueData.length > 0 ? revenueData[0].totalRevenue : 0;
 
+    // Calculate platform earnings from all paid bookings (20% of total amount)
+    const platformEarningsData = await Payment.aggregate([
+      { $match: { status: 'completed' } },
+      { $group: { _id: null, totalPlatformFees: { $sum: '$platformFee' } } }
+    ]);
+    const platformEarnings = platformEarningsData.length > 0 ? platformEarningsData[0].totalPlatformFees : 0;
+
     res.status(200).json({
       success: true,
       data: {
@@ -182,7 +190,8 @@ exports.getDashboardStats = async (req, res) => {
           completedBookings,
           cancelledBookings,
           pendingVerifications,
-          totalRevenue
+          totalRevenue,
+          platformEarnings
         },
         recentBookings,
         recentUsers

@@ -4,7 +4,7 @@ const Payment = require('../models/Payment');
 const Booking = require('../models/Booking');
 const { protect } = require('../middleware/auth');
 
-// Create payment for a booking
+// Create/Process payment for a completed booking
 router.post('/', protect, async (req, res) => {
   try {
     const { bookingId, paymentMethod } = req.body;
@@ -17,7 +17,10 @@ router.post('/', protect, async (req, res) => {
     }
 
     // Find booking
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(bookingId)
+      .populate('parentId')
+      .populate('babysitterId');
+    
     if (!booking) {
       return res.status(404).json({
         success: false,
@@ -25,47 +28,79 @@ router.post('/', protect, async (req, res) => {
       });
     }
 
-    // Check if payment already exists
-    const existingPayment = await Payment.findOne({ bookingId });
-    if (existingPayment) {
+    // Check if booking is completed
+    if (booking.status !== 'completed') {
       return res.status(400).json({
         success: false,
-        message: 'Payment already exists for this booking'
+        message: 'Only completed bookings can be paid'
       });
     }
 
-    // Calculate prepayment (50% by default)
-    const prepaymentPercentage = 50;
-    const prepaymentAmount = (booking.totalAmount * prepaymentPercentage) / 100;
-    const remainingAmount = booking.totalAmount - prepaymentAmount;
-
-    // Create payment record
-    const payment = await Payment.create({
+    // Check if payment already exists and is completed
+    const existingPayment = await Payment.findOne({ 
       bookingId,
-      parentId: booking.parentId,
-      babysitterId: booking.babysitterId,
-      amount: booking.totalAmount,
-      prepaymentPercentage,
-      prepaymentAmount,
-      remainingAmount,
-      paymentMethod,
-      prepaymentStatus: 'pending',
-      finalPaymentStatus: 'pending'
+      status: 'completed'
     });
+    if (existingPayment) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment already completed for this booking'
+      });
+    }
 
-    console.log(`💳 Payment created for booking ${bookingId}: ৳${prepaymentAmount} prepayment`);
+    // Calculate fees (20% to platform, 80% to babysitter)
+    const totalAmount = booking.totalAmount;
+    const platformFee = Math.round(totalAmount * 0.2); // 20%
+    const babysitterEarnings = totalAmount - platformFee; // 80%
+
+    // Create or update payment record
+    let payment = await Payment.findOne({ bookingId });
+    
+    if (payment) {
+      // Update existing payment
+      payment.status = 'completed';
+      payment.paidAt = Date.now();
+      payment.paymentMethod = paymentMethod;
+      await payment.save();
+    } else {
+      // Create new payment record
+      payment = await Payment.create({
+        bookingId,
+        parentId: booking.parentId._id,
+        babysitterId: booking.babysitterId._id,
+        totalAmount,
+        platformFee,
+        babysitterEarnings,
+        paymentMethod,
+        status: 'completed',
+        paidAt: Date.now()
+      });
+    }
+
+    // Update booking payment status
+    booking.paymentStatus = 'paid';
+    await booking.save();
+
+    console.log(`💳 Payment completed for booking ${bookingId}: ৳${totalAmount} (Platform: ৳${platformFee}, Babysitter: ৳${babysitterEarnings})`);
 
     res.status(201).json({
       success: true,
-      message: 'Payment record created successfully',
-      data: payment
+      message: 'Payment processed successfully',
+      data: {
+        payment,
+        booking: {
+          id: booking._id,
+          status: booking.status,
+          paymentStatus: booking.paymentStatus
+        }
+      }
     });
 
   } catch (error) {
     console.error('🔥 CREATE PAYMENT ERROR:', error);
     res.status(500).json({
       success: false,
-      message: 'Error creating payment',
+      message: 'Error processing payment',
       error: error.message
     });
   }
