@@ -14,6 +14,9 @@ import ParentProfilePage from './components/parent/ParentProfilePage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AccountUnderReview from './components/AccountUnderReview';
 import RejectionPage from './components/RejectionPage';
+import PaymentSuccess from './components/payment/PaymentSuccess';
+import PaymentError from './components/payment/PaymentError';
+import PaymentCancelled from './components/payment/PaymentCancelled';
 import './App.css';
 
 function App() {
@@ -35,6 +38,9 @@ function App() {
             <Route path="/parent-profile" element={<ParentProfilePage />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/account-under-review" element={<AccountUnderReview />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/payment-error" element={<PaymentError />} />
+            <Route path="/payment-cancelled" element={<PaymentCancelled />} />
           </Routes>
         </div>
       </Router>

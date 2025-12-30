@@ -44,6 +44,7 @@ const ParentBookingsPage = () => {
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
   const navigate = useNavigate();
 
   // Theme color for parents - Sky Blue
@@ -141,12 +142,16 @@ const ParentBookingsPage = () => {
 
   const handleMakePayment = async () => {
     if (!selectedBooking) return;
-    if (!window.confirm('Confirm payment of ৳' + selectedBooking.totalAmount + '?')) return;
-
+    
+    // Only show confirmation for cash payment
+    if (selectedPaymentMethod === 'cash') {
+      if (!window.confirm('Confirm cash payment of ৳' + selectedBooking.totalAmount + '?')) return;
+    }
+    
     setPaymentLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/payments', {
+      const response = await fetch('http://localhost:3000/api/payments/init-payment', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -154,15 +159,20 @@ const ParentBookingsPage = () => {
         },
         body: JSON.stringify({
           bookingId: selectedBooking._id,
-          paymentMethod: 'cash'
+          paymentMethod: selectedPaymentMethod
         })
       });
       const data = await response.json();
       
       if (data.success) {
-        alert('Payment completed successfully!');
-        setOpenPaymentDialog(false);
-        fetchBookings();
+        if (data.paymentType === 'cash') {
+          alert('Cash payment recorded successfully!');
+          setOpenPaymentDialog(false);
+          fetchBookings();
+        } else if (data.paymentType === 'online') {
+          // Online payment - redirect to SSLCommerz
+          window.location.href = data.data.gatewayUrl;
+        }
       } else {
         alert(data.message || 'Failed to process payment');
       }
@@ -585,6 +595,7 @@ const ParentBookingsPage = () => {
           <DialogContent sx={{ paddingTop: 3 }}>
             {selectedBooking && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Booking Info */}
                 <Box sx={{ 
                   backgroundColor: 'rgba(255, 152, 0, 0.1)',
                   borderLeft: '4px solid #FF9800',
@@ -599,6 +610,7 @@ const ParentBookingsPage = () => {
                   </Typography>
                 </Box>
 
+                {/* Amount Breakdown */}
                 <Box sx={{ 
                   backgroundColor: '#f5f5f5',
                   padding: 2,
@@ -611,14 +623,12 @@ const ParentBookingsPage = () => {
                       ৳{selectedBooking.totalAmount || 0}
                     </Typography>
                   </Box>
-
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1.5 }}>
                     <Typography sx={{ color: '#666', fontSize: '0.9rem' }}>Platform Fee (20%):</Typography>
                     <Typography sx={{ fontWeight: 600, color: '#FF9800' }}>
                       ৳{Math.round((selectedBooking.totalAmount || 0) * 0.2)}
                     </Typography>
                   </Box>
-
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography sx={{ color: '#666', fontSize: '0.9rem' }}>Babysitter Receives (80%):</Typography>
                     <Typography sx={{ fontWeight: 600, color: '#4CAF50' }}>
@@ -627,18 +637,46 @@ const ParentBookingsPage = () => {
                   </Box>
                 </Box>
 
-                <Box sx={{ 
-                  backgroundColor: '#e3f2fd',
-                  padding: 2,
-                  borderRadius: 1,
-                  border: '1px solid #90caf9'
-                }}>
-                  <Typography sx={{ fontSize: '0.85rem', color: '#1976d2' }}>
-                    <strong>💳 Payment Method:</strong> Cash
+                {/* Payment Method Selection */}
+                <Box>
+                  <Typography sx={{ fontWeight: 600, marginBottom: 1.5, color: '#333' }}>
+                    Select Payment Method:
                   </Typography>
-                  <Typography sx={{ fontSize: '0.85rem', color: '#1976d2', marginTop: 0.5 }}>
-                    The payment will be marked as completed after confirmation.
-                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <Box
+                      onClick={() => setSelectedPaymentMethod('cash')}
+                      sx={{
+                        padding: 2,
+                        border: selectedPaymentMethod === 'cash' ? '2px solid #FF9800' : '1px solid #ddd',
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                        backgroundColor: selectedPaymentMethod === 'cash' ? 'rgba(255, 152, 0, 0.1)' : '#fff',
+                        '&:hover': { backgroundColor: 'rgba(255, 152, 0, 0.05)' }
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 600 }}>💵 Cash Payment</Typography>
+                      <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                        Pay directly after service
+                      </Typography>
+                    </Box>
+
+                    <Box
+                      onClick={() => setSelectedPaymentMethod('online')}  // Changed from 'card'
+                      sx={{
+                        padding: 2,
+                        border: selectedPaymentMethod === 'online' ? '2px solid #FF9800' : '1px solid #ddd',
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                        backgroundColor: selectedPaymentMethod === 'online' ? 'rgba(255, 152, 0, 0.1)' : '#fff',
+                        '&:hover': { backgroundColor: 'rgba(255, 152, 0, 0.05)' }
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 600 }}>💳 Card/Online Payment</Typography>
+                      <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                        Credit/Debit Card, bKash, Nagad, Rocket
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Box>
               </Box>
             )}
