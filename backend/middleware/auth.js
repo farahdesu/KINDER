@@ -27,6 +27,17 @@ const protect = async (req, res, next) => {
         });
       }
       
+      // Only block banned users from login
+      if (user.accountStatus === 'banned') {
+        return res.status(403).json({
+          success: false,
+          message: `Your account has been banned. Reason: ${user.accountStatusReason}. Please contact support.`,
+          accountStatus: 'banned'
+        });
+      }
+      
+      // Warned users can login but will see notification (handled on frontend)
+      
       req.user = user;
       next();
     } catch (error) {

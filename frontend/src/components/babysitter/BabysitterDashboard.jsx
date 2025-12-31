@@ -53,6 +53,8 @@ import {
 } from '@mui/icons-material';
 import KinderLogo from '../../assets/KinderLogo.png';
 import KinderBackground from '../../assets/KinderBackground.jpg';
+import ReportSubmission from '../ReportSubmission';
+import NotificationBell from '../NotificationBell';
 
 const BabysitterDashboard = () => {
   const [user, setUser] = useState(null);
@@ -79,6 +81,8 @@ const BabysitterDashboard = () => {
   const [availabilitySaving, setAvailabilitySaving] = useState(false);
   const [openParentDetailsDialog, setOpenParentDetailsDialog] = useState(false);
   const [selectedParentDetails, setSelectedParentDetails] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedBookingForReport, setSelectedBookingForReport] = useState(null);
   const navigate = useNavigate();
 
   // Theme color for babysitters - Yellow
@@ -453,11 +457,67 @@ const BabysitterDashboard = () => {
       
       // Fetch REAL bookings from API with correct ID
       fetchRealBookings(userData.id || userData._id);
+      
+      // Refresh user status immediately and then every 5 seconds
+      refreshUserStatus();
+      const statusInterval = setInterval(() => {
+        refreshUserStatus();
+      }, 5000);
+      
+      return () => clearInterval(statusInterval);
     } else {
       console.log('No credentials found. Redirecting to login...');
       navigate('/login');
     }
   }, [navigate]);
+
+  // Watch for user changes
+  useEffect(() => {
+    if (user?.accountStatus) {
+      console.log('👤 Babysitter status updated:', {
+        name: user.name,
+        accountStatus: user.accountStatus,
+        accountStatusReason: user.accountStatusReason
+      });
+    }
+  }, [user?.accountStatus, user?.accountStatusReason]);
+
+  const refreshUserStatus = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:3000/api/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      
+      console.log('🔄 Babysitter status API Response:', data);
+      
+      // Handle both success and banned user cases
+      if (data.user) {
+        console.log('✅ Updating babysitter with status:', data.user.accountStatus);
+        setUser(data.user);
+        
+        // Also update sessionStorage
+        const storedUser = JSON.parse(sessionStorage.getItem('user'));
+        const updatedUser = {
+          ...storedUser,
+          ...data.user
+        };
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+      } else if (data.accountStatus === 'banned') {
+        console.log('🚫 Babysitter is banned');
+        setUser({
+          ...JSON.parse(sessionStorage.getItem('user')),
+          accountStatus: 'banned',
+          accountStatusReason: data.reason || 'Your account has been banned'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing babysitter status:', error);
+    }
+  };
 
   // Accept booking
   const acceptBooking = async (id) => {
@@ -831,9 +891,24 @@ const BabysitterDashboard = () => {
                 >
                   Babysitter Dashboard
                 </Typography>
-                <Typography sx={{ color: 'rgba(255, 255, 255, 0.95)', fontSize: '1rem', textAlign: 'left' }}>
-                  Welcome back, {user.name}!
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.95)', fontSize: '1rem', textAlign: 'left' }}>
+                    Welcome back, {user.name}!
+                  </Typography>
+                  {user?.accountStatus && (
+                    <Chip 
+                      key={user.accountStatus}
+                      label={user.accountStatus.charAt(0).toUpperCase() + user.accountStatus.slice(1)} 
+                      sx={{ 
+                        backgroundColor: user.accountStatus === 'banned' ? '#f44336' : user.accountStatus === 'warned' ? '#FFA726' : '#4CAF50',
+                        color: 'white',
+                        fontWeight: 600,
+                        height: 26,
+                        fontSize: '0.8rem'
+                      }}
+                    />
+                  )}
+                </Box>
               </Box>
             </Box>
             <Box sx={{ display: 'flex', gap: 1 }}>
@@ -865,6 +940,7 @@ const BabysitterDashboard = () => {
               >
                 Edit Profile
               </Button>
+              <NotificationBell themeColor={themeColor} />
               <Button
                 variant="contained"
                 startIcon={<Logout />}
@@ -1209,6 +1285,15 @@ const BabysitterDashboard = () => {
                                 title="View Parent Details"
                               >
                                 <Person sx={{ color: '#2196F3', fontSize: 20 }} />
+                              </IconButton>
+                            )}
+                            {booking.status === 'completed' && booking.paymentStatus === 'paid' && (
+                              <IconButton
+                                size="small"
+                                onClick={() => { setSelectedBookingForReport(booking); setShowReportModal(true); }}
+                                title="Report Issue"
+                              >
+                                <MessageIcon sx={{ color: '#FF6B6B', fontSize: 20 }} />
                               </IconButton>
                             )}
                             {booking.status === 'completed' && (
@@ -1693,6 +1778,25 @@ const BabysitterDashboard = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Report Submission Modal */}
+        {showReportModal && selectedBookingForReport && (
+          <ReportSubmission
+            bookingId={selectedBookingForReport._id}
+            booking={selectedBookingForReport}
+            userRole="babysitter"
+            onClose={() => {
+              setShowReportModal(false);
+              setSelectedBookingForReport(null);
+            }}
+            onSuccess={(report) => {
+              setShowReportModal(false);
+              setSelectedBookingForReport(null);
+              fetchRealBookings(user?.userId || user?._id); // Refresh bookings
+              alert('Report submitted successfully!');
+            }}
+          />
+        )}
 
       </Container>
     </Box>

@@ -44,13 +44,23 @@ const reportSchema = new mongoose.Schema({
     enum: ['warning', 'suspension', 'ban', 'no_action'],
     default: null
   },
+  resolutionChangedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   createdAt: {
     type: Date,
     default: Date.now
   },
   resolvedAt: {
     type: Date
+  },
+  resolutionUpdatedAt: {
+    type: Date
   }
 });
+
+// Index to enforce max 2 reports per booking (one per reporter)
+reportSchema.index({ bookingId: 1, reporterId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Report', reportSchema);

@@ -97,6 +97,14 @@ router.post('/', protect, async (req, res) => {
   try {
     const { babysitterId, date, startTime, endTime, address, specialInstructions, children } = req.body;
 
+    // Check if user is banned - cannot make bookings
+    if (req.user.accountStatus === 'banned') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been banned. You cannot make bookings. Please contact support.'
+      });
+    }
+
     // Validation
     if (!babysitterId || !date || !startTime || !endTime || !address) {
       return res.status(400).json({

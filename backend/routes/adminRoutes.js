@@ -18,6 +18,7 @@ router.put('/verify-user/:id', protect, adminOnly, adminController.verifyUser);
 
 // Other admin routes
 router.put('/users/:userId', protect, adminOnly, adminController.updateUser);
+router.put('/users/:userId/status', protect, adminOnly, adminController.updateUserAccountStatus);
 router.delete('/users/:userId', protect, adminOnly, adminController.deleteUser);
 router.post('/create-admin', protect, adminOnly, adminController.createAdmin);
 router.put('/bookings/:bookingId', protect, adminOnly, adminController.updateBookingStatus);

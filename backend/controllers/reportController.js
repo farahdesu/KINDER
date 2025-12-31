@@ -1,13 +1,22 @@
 const Report = require('../models/Report');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
+const Payment = require('../models/Payment');
 const Notification = require('../models/Notification');
+const Parent = require('../models/Parent');
+const Babysitter = require('../models/Babysitter');
 
 // Submit a report
 exports.submitReport = async (req, res) => {
   try {
     const { reportedUserId, bookingId, category, description } = req.body;
     const reporterId = req.user._id;
+
+    console.log('📨 Report submission received:');
+    console.log('  reportedUserId:', reportedUserId, 'Type:', typeof reportedUserId);
+    console.log('  bookingId:', bookingId);
+    console.log('  category:', category);
+    console.log('  reporterId:', reporterId);
 
     // Validate input
     if (!reportedUserId || !category || !description) {
@@ -33,11 +42,32 @@ exports.submitReport = async (req, res) => {
     }
 
     // Check if reported user exists
-    const reportedUser = await User.findById(reportedUserId);
+    // reportedUserId could be either a Parent ID, Babysitter ID, or User ID
+    let reportedUser = await User.findById(reportedUserId);
+    
     if (!reportedUser) {
+      // Try to find as Parent and get the associated User
+      const parent = await Parent.findById(reportedUserId).populate('userId');
+      if (parent && parent.userId) {
+        reportedUser = parent.userId;
+      }
+    }
+    
+    if (!reportedUser) {
+      // Try to find as Babysitter and get the associated User
+      const babysitter = await Babysitter.findById(reportedUserId).populate('userId');
+      if (babysitter && babysitter.userId) {
+        reportedUser = babysitter.userId;
+      }
+    }
+    
+    if (!reportedUser) {
+      console.error('🔥 Reported user not found:', reportedUserId);
+      console.error('Looking for user ID:', reportedUserId, 'Type:', typeof reportedUserId);
       return res.status(404).json({
         success: false,
-        message: 'Reported user not found'
+        message: 'Reported user not found',
+        reportedUserId: reportedUserId
       });
     }
 
@@ -52,18 +82,44 @@ exports.submitReport = async (req, res) => {
       }
     }
 
-    // Check for duplicate reports (same reporter, reported user, within 24 hours)
-    const recentReport = await Report.findOne({
-      reporterId,
-      reportedUserId,
-      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-    });
-
-    if (recentReport) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already reported this user in the last 24 hours'
+    // Check for duplicate reports per booking (max 2 reports per booking: one from parent, one from babysitter)
+    if (bookingId) {
+      const existingReport = await Report.findOne({
+        bookingId,
+        reporterId
       });
+
+      if (existingReport) {
+        return res.status(400).json({
+          success: false,
+          message: 'You have already filed a report for this booking'
+        });
+      }
+
+      // Check max 2 reports per booking
+      const bookingReportCount = await Report.countDocuments({ bookingId });
+      if (bookingReportCount >= 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'Maximum 2 reports (one from parent, one from babysitter) per booking already reached'
+        });
+      }
+    }
+
+    // Check for duplicate reports (same reporter, reported user, within 24 hours) - only if no booking specified
+    if (!bookingId) {
+      const recentReport = await Report.findOne({
+        reporterId,
+        reportedUserId,
+        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+      });
+
+      if (recentReport) {
+        return res.status(400).json({
+          success: false,
+          message: 'You have already reported this user in the last 24 hours'
+        });
+      }
     }
 
     // Determine severity based on category
@@ -152,8 +208,7 @@ exports.getReportDetails = async (req, res) => {
     const { reportId } = req.params;
 
     const report = await Report.findById(reportId)
-      .populate('reporterId', 'name email phone')
-      .populate('reportedUserId', 'name email role phone')
+      .populate('reporterId', 'name email phone role')
       .populate('bookingId');
 
     if (!report) {
@@ -163,9 +218,29 @@ exports.getReportDetails = async (req, res) => {
       });
     }
 
+    // Resolve reportedUserId (could be Parent ID, Babysitter ID, or User ID)
+    let reportedUser = await User.findById(report.reportedUserId).select('name email role accountStatus phone');
+    
+    if (!reportedUser) {
+      const parent = await Parent.findById(report.reportedUserId).populate('userId', 'name email role accountStatus phone');
+      if (parent && parent.userId) {
+        reportedUser = parent.userId;
+      }
+    }
+    
+    if (!reportedUser) {
+      const babysitter = await Babysitter.findById(report.reportedUserId).populate('userId', 'name email role accountStatus phone');
+      if (babysitter && babysitter.userId) {
+        reportedUser = babysitter.userId;
+      }
+    }
+
+    const reportData = report.toObject();
+    reportData.reportedUserId = reportedUser;
+
     res.status(200).json({
       success: true,
-      data: report
+      data: reportData
     });
 
   } catch (error) {
@@ -178,11 +253,11 @@ exports.getReportDetails = async (req, res) => {
   }
 };
 
-// Update report status and resolution
+// Update report status and notes
 exports.updateReport = async (req, res) => {
   try {
     const { reportId } = req.params;
-    const { status, resolution, adminNotes } = req.body;
+    const { status, adminNotes } = req.body;
 
     const report = await Report.findById(reportId);
     if (!report) {
@@ -193,7 +268,7 @@ exports.updateReport = async (req, res) => {
     }
 
     if (status) {
-      const validStatuses = ['open', 'under_review', 'resolved', 'dismissed'];
+      const validStatuses = ['open', 'resolved', 'dismissed'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({
           success: false,
@@ -203,61 +278,13 @@ exports.updateReport = async (req, res) => {
       report.status = status;
     }
 
-    if (resolution) {
-      const validResolutions = ['warning', 'suspension', 'ban', 'no_action'];
-      if (!validResolutions.includes(resolution)) {
-        return res.status(400).json({
-          success: false,
-          message: `Resolution must be one of: ${validResolutions.join(', ')}`
-        });
-      }
-      report.resolution = resolution;
-      report.resolvedAt = new Date();
-
-      // Take action based on resolution
-      if (resolution === 'warning') {
-        // Create warning notification
-        await Notification.create({
-          userId: report.reportedUserId,
-          type: 'warning',
-          title: 'Account Warning',
-          message: `Your account has received a warning for: ${report.category}. Please review our community guidelines.`,
-          relatedId: report._id,
-          relatedModel: 'Report'
-        });
-        console.log(`⚠️ Warning issued to user ${report.reportedUserId}`);
-      } else if (resolution === 'suspension') {
-        // Create suspension notification
-        await Notification.create({
-          userId: report.reportedUserId,
-          type: 'suspension',
-          title: 'Account Suspended',
-          message: `Your account has been temporarily suspended due to: ${report.category}. Please contact support.`,
-          relatedId: report._id,
-          relatedModel: 'Report'
-        });
-        console.log(`🚫 Account suspended for user ${report.reportedUserId}`);
-      } else if (resolution === 'ban') {
-        // Create ban notification
-        await Notification.create({
-          userId: report.reportedUserId,
-          type: 'suspension',
-          title: 'Account Banned',
-          message: `Your account has been permanently banned due to: ${report.category}. This decision is final.`,
-          relatedId: report._id,
-          relatedModel: 'Report'
-        });
-        console.log(`🔒 Account banned for user ${report.reportedUserId}`);
-      }
-    }
-
-    if (adminNotes) {
+    if (adminNotes !== undefined) {
       report.adminNotes = adminNotes;
     }
 
     await report.save();
 
-    console.log(`✅ Report ${reportId} updated: ${status} - ${resolution}`);
+    console.log(`✅ Report ${reportId} updated: ${status}`);
 
     res.status(200).json({
       success: true,
@@ -348,3 +375,175 @@ exports.getReportStats = async (req, res) => {
     });
   }
 };
+
+// Get reports for specific booking
+exports.getBookingReports = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    const reports = await Report.find({ bookingId })
+      .populate('reporterId', 'name email role')
+      .populate('reportedUserId', 'name email role')
+      .populate('resolutionChangedBy', 'name email')
+      .sort({ createdAt: -1 });
+
+    const reportCount = reports.length;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        booking: {
+          _id: booking._id,
+          parentId: booking.parentId,
+          babysitterId: booking.babysitterId,
+          date: booking.date,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          paymentStatus: booking.paymentStatus,
+          status: booking.status
+        },
+        reports,
+        reportCount,
+        maxReportsReached: reportCount >= 2
+      }
+    });
+
+  } catch (error) {
+    console.error('🔥 GET BOOKING REPORTS ERROR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching booking reports',
+      error: error.message
+    });
+  }
+};
+
+// Get all reports for admin with booking details
+exports.getReportsWithBookings = async (req, res) => {
+  try {
+    const { status = 'all', limit = 10, page = 1, bookingId = null } = req.query;
+
+    let query = {};
+    
+    if (status !== 'all') query.status = status;
+    if (bookingId) query.bookingId = bookingId;
+
+    const reports = await Report.find(query)
+      .populate('reporterId', 'name email role accountStatus')
+      .populate('bookingId', 'parentId babysitterId date startTime endTime status paymentStatus')
+      .populate('resolutionChangedBy', 'name email')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Report.countDocuments(query);
+
+    // Resolve reportedUserId for each report and enrich with booking details
+    const enrichedReports = await Promise.all(
+      reports.map(async (report) => {
+        const reportObj = report.toObject();
+        
+        // Resolve reportedUserId (could be Parent ID, Babysitter ID, or User ID)
+        let reportedUser = await User.findById(report.reportedUserId).select('name email role accountStatus phone');
+        
+        if (!reportedUser) {
+          const parent = await Parent.findById(report.reportedUserId).populate('userId', 'name email role accountStatus phone');
+          if (parent && parent.userId) {
+            reportedUser = parent.userId;
+          }
+        }
+        
+        if (!reportedUser) {
+          const babysitter = await Babysitter.findById(report.reportedUserId).populate('userId', 'name email role accountStatus phone');
+          if (babysitter && babysitter.userId) {
+            reportedUser = babysitter.userId;
+          }
+        }
+        
+        reportObj.reportedUserId = reportedUser;
+        
+        // Add booking report count
+        if (reportObj.bookingId) {
+          const reportCount = await Report.countDocuments({ bookingId: reportObj.bookingId._id });
+          reportObj.reportCountForBooking = reportCount;
+        }
+        
+        return reportObj;
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        reports: enrichedReports,
+        pagination: {
+          total,
+          page: parseInt(page),
+          pages: Math.ceil(total / limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('🔥 GET REPORTS WITH BOOKINGS ERROR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching reports with booking details',
+      error: error.message
+    });
+  }
+};
+
+// Check if payment is completed for booking (enables reporting)
+exports.checkPaymentStatusForBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    const booking = await Booking.findById(bookingId).populate('parentId babysitterId', '_id');
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    const canReport = booking.paymentStatus === 'paid' && booking.status === 'completed';
+
+    const payment = await Payment.findOne({ bookingId });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        bookingId: booking._id,
+        parentId: booking.parentId._id || booking.parentId,
+        babysitterId: booking.babysitterId._id || booking.babysitterId,
+        paymentStatus: booking.paymentStatus,
+        bookingStatus: booking.status,
+        canReport,
+        paymentDetails: payment ? {
+          amount: payment.totalAmount,
+          method: payment.paymentMethod,
+          paidAt: payment.paidAt
+        } : null
+      }
+    });
+
+  } catch (error) {
+    console.error('🔥 CHECK PAYMENT STATUS ERROR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error checking payment status',
+      error: error.message
+    });
+  }
+};
+
+module.exports = exports;

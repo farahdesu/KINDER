@@ -8,8 +8,10 @@ const {
   verifyResetCode, 
   resetPasswordWithCode, 
   deleteRejectedUser,
-  checkVerificationStatus
+  checkVerificationStatus,
+  getCurrentUser
 } = require('../controllers/authController');
+const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -18,6 +20,9 @@ router.post('/register', register);
 
 // POST /api/auth/login
 router.post('/login', login);
+
+// GET /api/auth/me - Get current authenticated user
+router.get('/me', protect, getCurrentUser);
 
 // POST /api/auth/forgot-password
 router.post('/forgot-password', forgotPassword);
