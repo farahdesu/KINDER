@@ -364,15 +364,24 @@ const BabysitterDashboard = () => {
         if (data.babysitter) {
           const babysitterProfile = data.babysitter;
           
-          // Update session storage with fresh skills
+          // Update session storage with ALL fresh profile data
           const storedUser = sessionStorage.getItem('user');
           if (storedUser) {
             const updatedUser = JSON.parse(storedUser);
             updatedUser.babysitterProfile = {
               ...updatedUser.babysitterProfile,
-              skills: babysitterProfile.skills
+              university: babysitterProfile.university,
+              department: babysitterProfile.department,
+              year: babysitterProfile.year,
+              hourlyRate: babysitterProfile.hourlyRate,
+              experience: babysitterProfile.experience,
+              studentId: babysitterProfile.studentId,
+              skills: babysitterProfile.skills,
+              rating: babysitterProfile.rating,
+              totalJobs: babysitterProfile.totalJobs
             };
             sessionStorage.setItem('user', JSON.stringify(updatedUser));
+            setUser(updatedUser);
             
             // Update local skills state
             const fetchedSkills = Array.isArray(babysitterProfile.skills) ? 
@@ -380,7 +389,7 @@ const BabysitterDashboard = () => {
               ['Childcare', 'Homework Help', 'First Aid'];
             setSkills(fetchedSkills);
             
-            console.log('Profile refreshed with latest skills:', fetchedSkills);
+            console.log('Profile refreshed with latest data:', updatedUser.babysitterProfile);
           }
         }
       } else {
@@ -388,7 +397,7 @@ const BabysitterDashboard = () => {
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      // Silently fail - use session storage skills
+      // Silently fail - use session storage profile
     }
   };
 
