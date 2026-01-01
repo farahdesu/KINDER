@@ -118,6 +118,7 @@ const ParentDashboard = () => {
             // Only fetch babysitters and bookings if not banned
             fetchBabysitters();
             fetchBookings();
+            fetchParentProfile(); // Fetch parent profile to get updated rating
           }
         } else {
           navigate('/account-under-review');
@@ -232,6 +233,37 @@ const ParentDashboard = () => {
 
   const handleViewBookings = () => {
     navigate('/parent-bookings');
+  };
+
+  // Fetch parent profile to update rating
+  const fetchParentProfile = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const userData = JSON.parse(sessionStorage.getItem('user'));
+      
+      if (!userData?.id) return;
+      
+      const response = await fetch(`http://localhost:3000/api/parents/profile/${userData.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // Update user state with the latest parent profile data including rating
+        setUser(prevUser => ({
+          ...prevUser,
+          rating: data.data.rating || 0,
+          totalReviews: data.data.totalReviews || 0
+        }));
+        
+        console.log('✅ Parent profile updated - Rating:', data.data.rating);
+      }
+    } catch (error) {
+      console.error('Error fetching parent profile:', error);
+    }
   };
 
   const handleLogout = () => {
@@ -452,6 +484,19 @@ const ParentDashboard = () => {
                 }}
               >
                 Edit Profile
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => navigate('/reviews')}
+                sx={{
+                  backgroundColor: '#FF9800',
+                  color: '#333',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { backgroundColor: '#F57C00' }
+                }}
+              >
+                My Reviews
               </Button>
               <NotificationBell themeColor={themeColor} />
               <Button

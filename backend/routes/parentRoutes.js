@@ -124,6 +124,8 @@ router.get('/profile/:userId', async (req, res) => {
         email: user.email,
         phone: user.phone,
         address: parent?.address || '',
+        rating: parent?.rating || 0,
+        totalReviews: parent?.totalReviews || 0,
         createdAt: user.createdAt
       }
     });

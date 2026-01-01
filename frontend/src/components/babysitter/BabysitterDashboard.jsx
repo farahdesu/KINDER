@@ -948,13 +948,13 @@ const BabysitterDashboard = () => {
                 onClick={() => navigate('/reviews')}
                 sx={{
                   backgroundColor: '#FF9800',
-                  color: 'white',
+                  color: '#333',
                   fontWeight: 600,
                   textTransform: 'none',
                   '&:hover': { backgroundColor: '#F57C00' }
                 }}
               >
-                ⭐ Reviews
+                My Reviews
               </Button>
               <NotificationBell themeColor={themeColor} />
               <Button

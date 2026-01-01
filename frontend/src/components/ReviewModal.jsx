@@ -234,31 +234,50 @@ const ReviewModal = ({ open, onClose, booking, babysitter, onSuccess }) => {
                 Your Review (Optional but recommended)
               </Typography>
               <TextField
-                fullWidth
-                multiline
-                rows={4}
-                placeholder={`Share your experience with this ${getReviewType().toLowerCase()}... (min 10 characters)`}
-                value={comment}
-                onChange={(e) => setComment(e.target.value.slice(0, maxCommentLength))}
-                disabled={loading}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    color: 'white',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderColor: 'rgba(255, 152, 0, 0.3)',
-                    '&:hover fieldset': {
-                      borderColor: 'rgba(255, 152, 0, 0.5)'
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#FF9800'
-                    }
-                  },
-                  '& .MuiOutlinedInput-input::placeholder': {
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    opacity: 1
-                  }
-                }}
+                    fullWidth
+                    multiline
+                    rows={4}
+                    placeholder={`Mention punctuality, communication, care, or anything that stood out  ${getReviewType().toLowerCase()}... (min 10 characters)`}
+                    // placeholder="Mention punctuality, communication, care, or anything that stood out (min 10 characters)"
+
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value.slice(0, maxCommentLength))}
+                    disabled={loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#ffffff',
+                        fontSize: '0.95rem',
+
+                        '& fieldset': {
+                          borderColor: 'rgba(255, 152, 0, 0.3)'
+                        },
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(255, 152, 0, 0.6)'
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#FF9800'
+                        }
+                      },
+
+                      /* ✅ THIS FIXES INVISIBLE TEXT */
+                      '& textarea': {
+                        color: '#111111',          // actual typed text
+                        fontWeight: 500
+                      },
+
+                      /* Placeholder */
+                      '& textarea::placeholder': {
+                        color: 'rgba(0, 0, 0, 0.45)',
+                        opacity: 1
+                      },
+
+                      /* Disabled state */
+                      '& .Mui-disabled textarea': {
+                        color: 'rgba(0, 0, 0, 0.4)'
+                      }
+                    }}
               />
+
               <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: 1 }}>
                 <Typography sx={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)' }}>
                   {comment.length}/{maxCommentLength} characters
