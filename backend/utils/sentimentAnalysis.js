@@ -8,14 +8,20 @@ const POSITIVE_WORDS = [
   'excellent', 'amazing', 'wonderful', 'great', 'good', 'fantastic', 'awesome',
   'perfect', 'love', 'best', 'professional', 'reliable', 'trustworthy', 'caring',
   'responsible', 'punctual', 'friendly', 'helpful', 'kind', 'patient', 'skilled',
-  'experienced', 'recommend', 'satisfied', 'happy', 'impressed', 'outstanding'
+  'experienced', 'recommend', 'satisfied', 'happy', 'impressed', 'outstanding',
+  'truly', 'confident', 'smooth', 'organized', 'supportive', 'delighted', 'wonderful service',
+  'great experience', 'superb', 'exceptional', 'brilliant', 'lovely', 'fantastic service',
+  'wonderful person', 'conscientious', 'dependable', 'prompt', 'cooperative', 'accommodating'
 ];
 
 const NEGATIVE_WORDS = [
   'terrible', 'awful', 'horrible', 'bad', 'worst', 'hate', 'poor', 'useless',
   'unreliable', 'unprofessional', 'rude', 'careless', 'irresponsible', 'late',
   'unsafe', 'dangerous', 'incompetent', 'dishonest', 'fraud', 'scam', 'disappointed',
-  'unsatisfied', 'angry', 'upset', 'disgusted', 'abusive', 'harassing'
+  'unsatisfied', 'angry', 'upset', 'disgusted', 'abusive', 'harassing',
+  'unclear', 'confusing', 'disorganized', 'frustrating', 'chaotic', 'inadequate',
+  'worst experience', 'poor service', 'unreliable service', 'disappointing', 'unhelpful',
+  'concerning', 'problematic', 'difficult', 'unpleasant', 'bothersome', 'worrisome'
 ];
 
 const HARASSMENT_KEYWORDS = [
@@ -107,11 +113,11 @@ function analyzeSentiment(text) {
     score = 0;
   }
 
-  // Determine label
+  // Determine label (lower threshold from 0.15 to 0.05 for better sensitivity)
   let label = 'neutral';
-  if (score > 0.3) {
+  if (score > 0.05) {
     label = 'positive';
-  } else if (score < -0.3) {
+  } else if (score < -0.05) {
     label = 'negative';
   }
 
@@ -223,10 +229,12 @@ function getReviewStatistics(reviews) {
   const totalReviews = reviews.length;
 
   // Calculate trust score (0-100)
-  const ratingScore = (averageRating / 5) * 50; // 50% from rating
-  const sentimentScore = (positiveCount / totalReviews) * 30; // 30% from positive sentiment
-  const flagScore = Math.max(0, 20 - (flaggedCount * 5)); // 20% from no flags
-  const trustScore = Math.round(ratingScore + sentimentScore + flagScore);
+  // Weights: 40% rating + 40% positive sentiment + 15% neutral + 5% no flags penalty
+  const ratingScore = (averageRating / 5) * 40; // 40% from rating
+  const sentimentScore = (positiveCount / totalReviews) * 40; // 40% from positive sentiment
+  const neutralScore = (neutralCount / totalReviews) * 15; // 15% from neutral (shows engagement)
+  const flagScore = Math.max(0, 5 - (flaggedCount * 2)); // 5% from no flags
+  const trustScore = Math.round(ratingScore + sentimentScore + neutralScore + flagScore);
 
   return {
     totalReviews,
