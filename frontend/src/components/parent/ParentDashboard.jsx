@@ -48,6 +48,8 @@ import {
 } from '@mui/icons-material';
 import KinderLogo from '../../assets/KinderLogo.png';
 import KinderBackground from '../../assets/KinderBackground.jpg';
+import NotificationBell from '../NotificationBell';
+import AccountStatusNotification from '../AccountStatusNotification';
 
 const ParentDashboard = () => {
   const [user, setUser] = useState(null);
@@ -75,11 +77,59 @@ const ParentDashboard = () => {
     
     if (storedUser && storedToken) {
       const userData = JSON.parse(storedUser);
-      checkVerificationStatus(userData);
+      // First verify parent status, then refresh user data immediately
+      checkVerificationStatusAndRefreshUser(userData);
+      
+      // Then refresh every 5 seconds
+      const statusInterval = setInterval(() => {
+        refreshUserStatus();
+      }, 5000);
+      
+      return () => clearInterval(statusInterval);
     } else {
       navigate('/login');
     }
   }, [navigate]);
+
+  // Watch for user changes and log them
+  useEffect(() => {
+    if (user?.accountStatus) {
+      console.log('👤 User state updated:', {
+        name: user.name,
+        accountStatus: user.accountStatus,
+        accountStatusReason: user.accountStatusReason
+      });
+    }
+  }, [user?.accountStatus, user?.accountStatusReason]);
+
+  const checkVerificationStatusAndRefreshUser = async (userData) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/parents/verification-status/${userData.id}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        if (data.data.verificationStatus === 'approved') {
+          // Immediately fetch the latest user data with current status
+          await refreshUserStatus();
+          
+          // Check if user is banned after refreshing status
+          const storedUser = JSON.parse(sessionStorage.getItem('user'));
+          if (storedUser?.accountStatus !== 'banned') {
+            // Only fetch babysitters and bookings if not banned
+            fetchBabysitters();
+            fetchBookings();
+          }
+        } else {
+          navigate('/account-under-review');
+        }
+      } else {
+        navigate('/account-under-review');
+      }
+    } catch (error) {
+      console.error('Error checking verification:', error);
+      navigate('/account-under-review');
+    }
+  };
 
   const checkVerificationStatus = async (userData) => {
     try {
@@ -100,6 +150,44 @@ const ParentDashboard = () => {
     } catch (error) {
       console.error('Error checking verification:', error);
       navigate('/account-under-review');
+    }
+  };
+  const refreshUserStatus = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:3000/api/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      
+      console.log('🔄 API Response from /api/auth/me:', data);
+      
+      // Handle both success and banned user cases
+      if (data.user) {
+        console.log('✅ Updating user with status:', data.user.accountStatus);
+        // Update user in state with complete user object
+        setUser(data.user);
+        
+        // Also update sessionStorage
+        const storedUser = JSON.parse(sessionStorage.getItem('user'));
+        const updatedUser = {
+          ...storedUser,
+          ...data.user
+        };
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+      } else if (data.accountStatus === 'banned') {
+        // User is banned - show restricted message
+        console.log('🚫 User is banned');
+        setUser({
+          ...JSON.parse(sessionStorage.getItem('user')),
+          accountStatus: 'banned',
+          accountStatusReason: data.reason || 'Your account has been banned'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing user status:', error);
     }
   };
 
@@ -299,6 +387,7 @@ const ParentDashboard = () => {
         {/* Main Transparent Container */}
         <Paper sx={{ ...glassStyle, padding: 3 }}>
           
+
           {/* Header Section */}
           <Box sx={{
             backgroundColor: 'rgba(0, 0, 0, 0.35)',
@@ -329,12 +418,27 @@ const ParentDashboard = () => {
                 >
                   Parent Dashboard
                 </Typography>
-                <Typography sx={{ color: 'rgba(255, 255, 255, 0.95)', fontSize: '1rem', textAlign: 'left' }}>
-                  Welcome back, {user.name}!
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.95)', fontSize: '1rem', textAlign: 'left' }}>
+                    Welcome back, {user.name}!
+                  </Typography>
+                  {user?.accountStatus && (
+                    <Chip 
+                      key={user.accountStatus}
+                      label={user.accountStatus.charAt(0).toUpperCase() + user.accountStatus.slice(1)} 
+                      sx={{ 
+                        backgroundColor: user.accountStatus === 'banned' ? '#f44336' : user.accountStatus === 'warned' ? '#FFA726' : '#4CAF50',
+                        color: 'white',
+                        fontWeight: 600,
+                        height: 26,
+                        fontSize: '0.8rem'
+                      }}
+                    />
+                  )}
+                </Box>
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               <Button
                 variant="contained"
                 startIcon={<Edit />}
@@ -349,6 +453,7 @@ const ParentDashboard = () => {
               >
                 Edit Profile
               </Button>
+              <NotificationBell themeColor={themeColor} />
               <Button
                 variant="contained"
                 startIcon={<Logout />}
@@ -472,18 +577,34 @@ const ParentDashboard = () => {
           </Grid>
 
           {/* Babysitters Section */}
-          <Box sx={{ 
-            backgroundColor: 'rgba(0, 0, 0, 0.3)', 
-            borderRadius: 2, 
-            padding: 2.5,
-            border: '1px solid rgba(255,255,255,0.1)'
-          }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, color: 'white', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ChildCare sx={{ color: '#FFEB3B' }} /> Available Babysitters ({filteredBabysitters.length})
-            </Typography>
+          {user?.accountStatus === 'banned' ? (
+            <Box sx={{ 
+              backgroundColor: '#f8d7da', 
+              border: '1px solid #f5c6cb',
+              borderRadius: 2, 
+              padding: 3,
+              textAlign: 'center'
+            }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#721c24', marginBottom: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                🚫 Access Restricted
+              </Typography>
+              <Typography sx={{ color: '#721c24' }}>
+                Your account has been banned. You cannot view available babysitters at this time.
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ 
+              backgroundColor: 'rgba(0, 0, 0, 0.3)', 
+              borderRadius: 2, 
+              padding: 2.5,
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'white', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ChildCare sx={{ color: '#FFEB3B' }} /> Available Babysitters ({filteredBabysitters.length})
+              </Typography>
 
-            {/* Search and Filters */}
-            <Box sx={{ display: 'flex', gap: 2, marginBottom: 3, flexWrap: 'wrap' }}>
+              {/* Search and Filters */}
+              <Box sx={{ display: 'flex', gap: 2, marginBottom: 3, flexWrap: 'wrap' }}>
               <TextField
                 placeholder="Search by name, university, department..."
                 size="small"
@@ -681,7 +802,8 @@ const ParentDashboard = () => {
                 </Typography>
               </Box>
             )}
-          </Box>
+            </Box>
+          )}
 
         </Paper>
 

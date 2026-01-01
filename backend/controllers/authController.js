@@ -600,3 +600,39 @@ exports.deleteRejectedUser = async (req, res) => {
     });
   }
 };
+
+// GET /api/auth/me - Get current authenticated user
+exports.getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        accountStatus: user.accountStatus,
+        accountStatusReason: user.accountStatusReason,
+        accountStatusChangedAt: user.accountStatusChangedAt,
+        isRejected: user.isRejected
+      }
+    });
+  } catch (error) {
+    console.error('🔥 GET CURRENT USER ERROR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user information',
+      error: error.message
+    });
+  }
+};

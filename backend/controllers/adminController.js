@@ -604,6 +604,100 @@ exports.updateUser = async (req, res) => {
   }
 };
 
+// Update User Account Status
+exports.updateUserAccountStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { accountStatus, accountStatusReason } = req.body;
+
+    if (!accountStatus) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide accountStatus'
+      });
+    }
+
+    const validStatuses = ['active', 'warned', 'banned'];
+    if (!validStatuses.includes(accountStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Status must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot change admin user status'
+      });
+    }
+
+    user.accountStatus = accountStatus;
+    user.accountStatusReason = accountStatusReason || null;
+    user.accountStatusChangedAt = new Date();
+    user.accountStatusChangedBy = req.user._id;
+
+    await user.save();
+
+    // Create notification for status change
+    const Notification = require('../models/Notification');
+    let notificationMessage = '';
+    let notificationType = 'warning';
+
+    if (accountStatus === 'warned') {
+      notificationMessage = accountStatusReason 
+        ? `Your account has been warned: ${accountStatusReason}`
+        : 'Your account has been warned. Please review your activities.';
+      notificationType = 'warning';
+    } else if (accountStatus === 'banned') {
+      notificationMessage = accountStatusReason
+        ? `Your account has been banned: ${accountStatusReason}`
+        : 'Your account has been banned.';
+      notificationType = 'suspension';
+    } else if (accountStatus === 'active') {
+      notificationMessage = 'Your account status has been restored to active.';
+      notificationType = 'warning';
+    }
+
+    await Notification.create({
+      userId: user._id,
+      type: notificationType,
+      title: `Account Status Changed`,
+      message: notificationMessage,
+      read: false
+    });
+
+    console.log(`✅ User ${user.email} status changed to ${accountStatus} by admin`);
+
+    res.status(200).json({
+      success: true,
+      message: `User status updated to ${accountStatus}`,
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        accountStatus: user.accountStatus
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating user account status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user account status',
+      error: error.message
+    });
+  }
+};
+
 // Delete User
 exports.deleteUser = async (req, res) => {
   try {

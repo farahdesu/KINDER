@@ -60,6 +60,26 @@ const userSchema = new mongoose.Schema({
   rejectionSeenAt: {
     type: Date,
     default: null
+  },
+  
+  // Account status
+  accountStatus: {
+    type: String,
+    enum: ['active', 'warned', 'banned'],
+    default: 'active'
+  },
+  accountStatusReason: {
+    type: String,
+    default: null
+  },
+  accountStatusChangedAt: {
+    type: Date,
+    default: null
+  },
+  accountStatusChangedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 });
 

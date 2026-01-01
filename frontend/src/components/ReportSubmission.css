@@ -1,0 +1,298 @@
+.report-submission {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.report-card {
+  background: white;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 100%;
+  padding: 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.report-card h3 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 22px;
+}
+
+.report-card .subtitle {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* Error Message */
+.error-message {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+  padding: 12px 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+/* Info Message */
+.info-message {
+  background: #e7f3ff;
+  border: 1px solid #2196f3;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.info-message h4 {
+  color: #1976d2;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.info-message p {
+  color: #333;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.info-message.success {
+  background: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.info-message.success h4 {
+  color: #2e7d32;
+}
+
+.booking-status {
+  margin-top: 15px;
+  display: flex;
+  gap: 20px;
+}
+
+.status-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.status-item span {
+  color: #666;
+}
+
+.status-item strong {
+  font-weight: 600;
+}
+
+/* Form */
+.report-form {
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.form-group .required {
+  font-size: 12px;
+  color: #ff6b6b;
+  font-weight: 500;
+}
+
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.form-group select:disabled,
+.form-group textarea:disabled {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.form-group small {
+  display: block;
+  color: #666;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.char-count {
+  display: block;
+  color: #666;
+  font-size: 12px;
+  margin-top: 6px;
+  text-align: right;
+}
+
+.char-warning {
+  color: #ff6b6b;
+  font-weight: 500;
+}
+
+/* Info Box */
+.info-box {
+  background: #f5f5f5;
+  border-left: 4px solid #ffa500;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.info-box h4 {
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.info-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.info-box li {
+  color: #555;
+  font-size: 13px;
+  padding-left: 20px;
+  position: relative;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.info-box li:before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #ffa500;
+  font-weight: bold;
+}
+
+.info-box li:last-child {
+  margin-bottom: 0;
+}
+
+/* Buttons */
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-submit,
+.btn-cancel,
+.btn-close {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-submit {
+  flex: 1;
+  background: #4caf50;
+  color: white;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #388e3c;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.btn-submit:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-cancel {
+  flex: 1;
+  background: #e0e0e0;
+  color: #333;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #d0d0d0;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-close {
+  width: 100%;
+  background: #e0e0e0;
+  color: #333;
+  margin-top: 15px;
+}
+
+.btn-close:hover {
+  background: #d0d0d0;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .report-submission {
+    padding: 10px;
+  }
+
+  .report-card {
+    padding: 20px;
+  }
+
+  .report-card h3 {
+    font-size: 18px;
+  }
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  .booking-status {
+    flex-direction: column;
+    gap: 10px;
+  }
+}

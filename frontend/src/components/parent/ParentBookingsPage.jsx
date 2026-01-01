@@ -35,6 +35,9 @@ import {
 } from '@mui/icons-material';
 import KinderLogo from '../../assets/KinderLogo.png';
 import KinderBackground from '../../assets/KinderBackground.jpg';
+import ReportSubmission from '../ReportSubmission';
+import NotificationBell from '../NotificationBell';
+import AccountStatusNotification from '../AccountStatusNotification';
 
 const ParentBookingsPage = () => {
   const [user, setUser] = useState(null);
@@ -44,6 +47,7 @@ const ParentBookingsPage = () => {
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
   const navigate = useNavigate();
 
@@ -57,12 +61,77 @@ const ParentBookingsPage = () => {
     
     if (storedUser && storedToken) {
       const userData = JSON.parse(storedUser);
-      setUser(userData);
-      fetchBookings();
+      
+      // Immediately refresh user status to get latest data
+      refreshUserStatus().then(() => {
+        // Check if user is banned after refreshing
+        const updatedUser = JSON.parse(sessionStorage.getItem('user'));
+        if (updatedUser?.accountStatus !== 'banned') {
+          // Only fetch bookings if not banned
+          fetchBookings();
+        }
+      });
+      
+      // Then refresh every 5 seconds
+      const statusInterval = setInterval(() => {
+        refreshUserStatus();
+      }, 5000);
+      
+      return () => clearInterval(statusInterval);
     } else {
       navigate('/login');
     }
   }, [navigate]);
+
+  // Watch for user changes and log them
+  useEffect(() => {
+    if (user?.accountStatus) {
+      console.log('👤 User state updated:', {
+        name: user.name,
+        accountStatus: user.accountStatus,
+        accountStatusReason: user.accountStatusReason
+      });
+    }
+  }, [user?.accountStatus, user?.accountStatusReason]);
+
+  const refreshUserStatus = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:3000/api/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      
+      console.log('🔄 API Response from /api/auth/me:', data);
+      
+      // Handle both success and banned user cases
+      if (data.user) {
+        console.log('✅ Updating user with status:', data.user.accountStatus);
+        // Update user in state with complete user object
+        setUser(data.user);
+        
+        // Also update sessionStorage
+        const storedUser = JSON.parse(sessionStorage.getItem('user'));
+        const updatedUser = {
+          ...storedUser,
+          ...data.user
+        };
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+      } else if (data.accountStatus === 'banned') {
+        // User is banned - show restricted message
+        console.log('🚫 User is banned');
+        setUser({
+          ...JSON.parse(sessionStorage.getItem('user')),
+          accountStatus: 'banned',
+          accountStatusReason: data.reason || 'Your account has been banned'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing user status:', error);
+    }
+  };
 
   const fetchBookings = async () => {
     try {
@@ -264,25 +333,43 @@ const ParentBookingsPage = () => {
                 <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>
                   My Bookings
                 </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
-                  Manage your babysitting bookings
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
+                    Manage your babysitting bookings
+                  </Typography>
+                  {user?.accountStatus && (
+                    <Chip 
+                      key={user.accountStatus}
+                      label={user.accountStatus.charAt(0).toUpperCase() + user.accountStatus.slice(1)} 
+                      sx={{ 
+                        backgroundColor: user.accountStatus === 'banned' ? '#f44336' : user.accountStatus === 'warned' ? '#FFA726' : '#4CAF50',
+                        color: 'white',
+                        fontWeight: 600,
+                        height: 26,
+                        fontSize: '0.8rem'
+                      }}
+                    />
+                  )}
+                </Box>
               </Box>
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<ArrowBack />}
-              onClick={() => navigate('/parent-dashboard')}
-              sx={{
-                backgroundColor: '#424242',
-                color: 'white',
-                fontWeight: 600,
-                textTransform: 'none',
-                '&:hover': { backgroundColor: '#303030' }
-              }}
-            >
-              Back to Dashboard
-            </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <NotificationBell themeColor={themeColor} />
+              <Button
+                variant="contained"
+                startIcon={<ArrowBack />}
+                onClick={() => navigate('/parent-dashboard')}
+                sx={{
+                  backgroundColor: '#424242',
+                  color: 'white',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { backgroundColor: '#303030' }
+                }}
+              >
+                Back to Dashboard
+              </Button>
+            </Box>
           </Box>
 
           {/* Stats Summary */}
@@ -317,12 +404,28 @@ const ParentBookingsPage = () => {
           </Box>
 
           {/* Bookings Table */}
-          <Box sx={{ 
-            backgroundColor: 'rgba(0, 0, 0, 0.3)', 
-            borderRadius: 2, 
-            padding: 2.5,
-            border: '1px solid rgba(255,255,255,0.1)'
-          }}>
+          {user?.accountStatus === 'banned' ? (
+            <Box sx={{ 
+              backgroundColor: '#f8d7da', 
+              border: '1px solid #f5c6cb',
+              borderRadius: 2, 
+              padding: 3,
+              textAlign: 'center'
+            }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#721c24', marginBottom: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                🚫 Access Restricted
+              </Typography>
+              <Typography sx={{ color: '#721c24' }}>
+                Your account has been banned. You cannot view or manage bookings at this time.
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ 
+              backgroundColor: 'rgba(0, 0, 0, 0.3)', 
+              borderRadius: 2, 
+              padding: 2.5,
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
             {loading ? (
               <Box sx={{ textAlign: 'center', padding: 4 }}>
                 <CircularProgress sx={{ color: themeColor }} />
@@ -490,7 +593,8 @@ const ParentBookingsPage = () => {
                 </Button>
               </Box>
             )}
-          </Box>
+            </Box>
+          )}
 
         </Paper>
 
@@ -560,6 +664,15 @@ const ParentBookingsPage = () => {
             <Button onClick={() => setOpenDetailsDialog(false)} sx={{ color: themeColor }}>
               Close
             </Button>
+            {selectedBooking && selectedBooking.status === 'completed' && selectedBooking.paymentStatus === 'paid' && (
+              <Button 
+                variant="contained" 
+                sx={{ backgroundColor: '#FF6B6B', '&:hover': { backgroundColor: '#e55555' } }}
+                onClick={() => { setOpenDetailsDialog(false); setShowReportModal(true); }}
+              >
+                📋 Report Issue
+              </Button>
+            )}
             {selectedBooking && selectedBooking.status === 'pending' && (
               <Button 
                 variant="contained" 
@@ -698,6 +811,21 @@ const ParentBookingsPage = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Report Submission Modal */}
+        {showReportModal && selectedBooking && (
+          <ReportSubmission
+            bookingId={selectedBooking._id}
+            booking={selectedBooking}
+            userRole="parent"
+            onClose={() => setShowReportModal(false)}
+            onSuccess={(report) => {
+              setShowReportModal(false);
+              fetchBookings(); // Refresh bookings
+              alert('Report submitted successfully!');
+            }}
+          />
+        )}
 
       </Container>
     </Box>

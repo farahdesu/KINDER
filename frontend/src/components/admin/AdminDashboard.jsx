@@ -48,6 +48,9 @@ import {
   ChevronRight
 } from '@mui/icons-material';
 import KinderLogo from '../../assets/KinderLogo.png';
+import AdminReports from './AdminReports';
+import AdminUserStatus from './AdminUserStatus';
+
 import '../LoginPage.css';
 
 const AdminDashboard = () => {
@@ -660,6 +663,8 @@ const handleVerifyUser = async (userId, verified, userType) => {
               <Tab label="Users" icon={<People />} iconPosition="start" sx={{ '& .MuiSvgIcon-root': { color: 'white' } }} />
               <Tab label="Bookings" icon={<Event />} iconPosition="start" sx={{ '& .MuiSvgIcon-root': { color: 'white' } }} />
               <Tab label="Verifications" icon={<VerifiedUser />} iconPosition="start" sx={{ '& .MuiSvgIcon-root': { color: 'white' } }} />
+              <Tab label="Reports" icon={<Warning />} iconPosition="start" sx={{ '& .MuiSvgIcon-root': { color: 'white' } }} />
+              <Tab label="User Status" icon={<AdminPanelSettings />} iconPosition="start" sx={{ '& .MuiSvgIcon-root': { color: 'white' } }} />
           </Tabs>
 
             {/* Content Area */}
@@ -1190,6 +1195,16 @@ const handleVerifyUser = async (userId, verified, userType) => {
                   </Grid>
                 )}
               </Grid>
+            )}
+
+            {/* Reports Tab */}
+            {activeTab === 3 && (
+              <AdminReports />
+            )}
+
+            {/* User Status Tab */}
+            {activeTab === 4 && (
+              <AdminUserStatus />
             )}
             </Box>
           </Box>
