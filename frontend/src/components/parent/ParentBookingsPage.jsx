@@ -37,7 +37,7 @@ import KinderLogo from '../../assets/KinderLogo.png';
 import KinderBackground from '../../assets/KinderBackground.jpg';
 import ReportSubmission from '../ReportSubmission';
 import NotificationBell from '../NotificationBell';
-import AccountStatusNotification from '../AccountStatusNotification';
+import ReviewModal from '../ReviewModal';
 
 const ParentBookingsPage = () => {
   const [user, setUser] = useState(null);
@@ -48,6 +48,8 @@ const ParentBookingsPage = () => {
   const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
   const navigate = useNavigate();
 
@@ -665,13 +667,22 @@ const ParentBookingsPage = () => {
               Close
             </Button>
             {selectedBooking && selectedBooking.status === 'completed' && selectedBooking.paymentStatus === 'paid' && (
-              <Button 
-                variant="contained" 
-                sx={{ backgroundColor: '#FF6B6B', '&:hover': { backgroundColor: '#e55555' } }}
-                onClick={() => { setOpenDetailsDialog(false); setShowReportModal(true); }}
-              >
-                📋 Report Issue
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button 
+                  variant="contained" 
+                  sx={{ backgroundColor: '#FF9800', '&:hover': { backgroundColor: '#F57C00' } }}
+                  onClick={() => { setSelectedBookingForReview(selectedBooking); setOpenDetailsDialog(false); setShowReviewModal(true); }}
+                >
+                  ⭐ Leave Review
+                </Button>
+                <Button 
+                  variant="contained" 
+                  sx={{ backgroundColor: '#FF6B6B', '&:hover': { backgroundColor: '#e55555' } }}
+                  onClick={() => { setOpenDetailsDialog(false); setShowReportModal(true); }}
+                >
+                  📋 Report Issue
+                </Button>
+              </Box>
             )}
             {selectedBooking && selectedBooking.status === 'pending' && (
               <Button 
@@ -823,6 +834,25 @@ const ParentBookingsPage = () => {
               setShowReportModal(false);
               fetchBookings(); // Refresh bookings
               alert('Report submitted successfully!');
+            }}
+          />
+        )}
+
+        {/* Review Modal */}
+        {showReviewModal && selectedBookingForReview && (
+          <ReviewModal
+            open={showReviewModal}
+            onClose={() => {
+              setShowReviewModal(false);
+              setSelectedBookingForReview(null);
+            }}
+            booking={selectedBookingForReview}
+            babysitter={selectedBookingForReview.babysitterId}
+            onSuccess={(review) => {
+              setShowReviewModal(false);
+              setSelectedBookingForReview(null);
+              fetchBookings(); // Refresh bookings
+              alert('Review submitted successfully!');
             }}
           />
         )}

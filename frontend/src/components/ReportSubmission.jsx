@@ -66,69 +66,43 @@ const ReportSubmission = ({ bookingId, onClose, onSuccess, userRole, booking }) 
     const currentUserId = currentUser?._id || currentUser?.userId || currentUser?.id;
     const currentUserRole = currentUser?.role || userRole;
     
+    console.log('🔍 getReportedUserId - Current User ID:', currentUserId, 'Role:', currentUserRole);
+    
     // First, try to get reportedUserId from booking object passed as prop
     if (booking) {
-      const bookingParentId = booking.parentId?._id || booking.parentId;
-      const bookingBabysitterId = booking.babysitterId?._id || booking.babysitterId;
+      console.log('📦 Using booking prop');
+      console.log('  Booking structure:', { parentId: booking.parentId, babysitterId: booking.babysitterId });
       
-      console.log('Using booking prop - Current User ID:', currentUserId, 'Role:', currentUserRole);
-      console.log('Booking Parent ID:', bookingParentId, 'Babysitter ID:', bookingBabysitterId);
-      console.log('Booking object structure:', {
-        parentId: booking.parentId,
-        babysitterId: booking.babysitterId,
-        hasParentIdStr: typeof bookingParentId,
-        hasBabysitterIdStr: typeof bookingBabysitterId
-      });
+      // Extract actual IDs - handle both string IDs and object references
+      const bookingParentId = typeof booking.parentId === 'object' ? booking.parentId?._id : booking.parentId;
+      const bookingBabysitterId = typeof booking.babysitterId === 'object' ? booking.babysitterId?._id : booking.babysitterId;
       
-      // If current user is parent, report the babysitter
-      if (bookingParentId === currentUserId) {
-        console.log('✅ User is parent, reporting babysitter:', bookingBabysitterId);
+      console.log('  Extracted - Parent ID:', bookingParentId, 'Babysitter ID:', bookingBabysitterId);
+      console.log('  Current User Role:', currentUserRole);
+      
+      // Determine based on role - don't try to match IDs since they're different types
+      // (Parent/Babysitter doc IDs vs. User IDs)
+      if (currentUserRole === 'parent') {
+        // Parent reports babysitter
+        console.log('✅ Parent reporting babysitter:', bookingBabysitterId);
         return bookingBabysitterId;
-      }
-      
-      // If current user is babysitter, report the parent
-      if (bookingBabysitterId === currentUserId) {
-        console.log('✅ User is babysitter, reporting parent:', bookingParentId);
-        return bookingParentId;
-      }
-      
-      // If parentId/babysitterId are missing, use role to determine
-      if (currentUserRole === 'parent' && bookingBabysitterId) {
-        console.log('⚠️ Using role-based mapping: parent reporting babysitter');
-        return bookingBabysitterId;
-      }
-      
-      if (currentUserRole === 'babysitter' && bookingParentId) {
-        console.log('⚠️ Using role-based mapping: babysitter reporting parent');
+      } else if (currentUserRole === 'babysitter') {
+        // Babysitter reports parent
+        console.log('✅ Babysitter reporting parent:', bookingParentId);
         return bookingParentId;
       }
     }
     
     // Fallback to bookingInfo from API if booking prop not available
     if (bookingInfo) {
-      console.log('Using API bookingInfo - Current User ID:', currentUserId, 'Role:', currentUserRole);
-      console.log('API Booking Info:', bookingInfo);
+      console.log('🔗 Using API bookingInfo');
+      console.log('  Booking Info:', { parentId: bookingInfo.parentId, babysitterId: bookingInfo.babysitterId });
       
-      // If current user is parent, report the babysitter
-      if (bookingInfo.parentId === currentUserId) {
-        console.log('✅ User is parent (from API), reporting babysitter:', bookingInfo.babysitterId);
+      if (currentUserRole === 'parent') {
+        console.log('✅ Parent (API) reporting babysitter:', bookingInfo.babysitterId);
         return bookingInfo.babysitterId;
-      }
-      
-      // If current user is babysitter, report the parent
-      if (bookingInfo.babysitterId === currentUserId) {
-        console.log('✅ User is babysitter (from API), reporting parent:', bookingInfo.parentId);
-        return bookingInfo.parentId;
-      }
-      
-      // Use role-based mapping
-      if (currentUserRole === 'parent' && bookingInfo.babysitterId) {
-        console.log('⚠️ Using role-based mapping (API): parent reporting babysitter');
-        return bookingInfo.babysitterId;
-      }
-      
-      if (currentUserRole === 'babysitter' && bookingInfo.parentId) {
-        console.log('⚠️ Using role-based mapping (API): babysitter reporting parent');
+      } else if (currentUserRole === 'babysitter') {
+        console.log('✅ Babysitter (API) reporting parent:', bookingInfo.parentId);
         return bookingInfo.parentId;
       }
     }

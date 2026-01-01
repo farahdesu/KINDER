@@ -108,10 +108,34 @@ const AdminReports = () => {
 
       // Update user account status if changed
       if (updateForm.userStatus && updateForm.userStatus !== selectedReport.reportedUserId?.accountStatus) {
-        await api.put(`/admin/users/${selectedReport.reportedUserId._id}/status`, {
+        // Extract user ID - the backend's getReportDetails already populates reportedUserId as a User object
+        let reportedUserIdStr = null;
+        
+        if (typeof selectedReport.reportedUserId === 'object' && selectedReport.reportedUserId) {
+          // It's an object (could be User with _id, or could be already a User with _id field)
+          reportedUserIdStr = selectedReport.reportedUserId._id;
+        } else if (typeof selectedReport.reportedUserId === 'string') {
+          // It's already a string ID
+          reportedUserIdStr = selectedReport.reportedUserId;
+        }
+        
+        console.log('📋 Updating user account status:');
+        console.log('  reportedUserId (raw):', selectedReport.reportedUserId);
+        console.log('  reportedUserId (extracted):', reportedUserIdStr);
+        console.log('  new status:', updateForm.userStatus);
+        console.log('  reason:', `Status changed via report #${selectedReport._id.slice(-6)}`);
+
+        if (!reportedUserIdStr) {
+          console.error('❌ Cannot determine reported user ID. reportedUserId:', selectedReport.reportedUserId);
+          throw new Error('Cannot determine reported user ID - please try again');
+        }
+
+        const statusUpdateResponse = await api.put(`/admin/users/${reportedUserIdStr}/status`, {
           accountStatus: updateForm.userStatus,
           accountStatusReason: `Status changed via report #${selectedReport._id.slice(-6)}`
         });
+        
+        console.log('✅ User status updated:', statusUpdateResponse.data);
       }
 
       // Update the report in the list
@@ -128,8 +152,8 @@ const AdminReports = () => {
       fetchStats();
       alert('Report and user status updated successfully!');
     } catch (err) {
-      setUpdateError(err.response?.data?.message || 'Failed to update report');
-      console.error('Error updating report:', err);
+      setUpdateError(err.response?.data?.message || err.message || 'Failed to update report');
+      console.error('❌ Error updating report:', err);
     } finally {
       setUpdateLoading(false);
     }

@@ -53,13 +53,34 @@ exports.submitReview = async (req, res) => {
     // Determine who is reviewing whom
     let toUserId, fromRole;
     
-    if (userId.toString() === booking.parentId.toString()) {
+    // Get parent's userId from Parent document
+    const parentDoc = await Parent.findById(booking.parentId);
+    if (!parentDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Parent not found'
+      });
+    }
+    const parentUserId = parentDoc.userId;
+
+    // Get babysitter's userId from Babysitter document
+    const babysitterDoc = await Babysitter.findById(booking.babysitterId);
+    if (!babysitterDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Babysitter not found'
+      });
+    }
+    const babysitterUserId = babysitterDoc.userId;
+
+    // Determine who is reviewing whom
+    if (userId.toString() === parentUserId.toString()) {
       // Parent reviewing babysitter
-      toUserId = (await Babysitter.findById(booking.babysitterId)).userId;
+      toUserId = babysitterUserId;
       fromRole = 'parent';
-    } else if (userId.toString() === (await Babysitter.findById(booking.babysitterId)).userId.toString()) {
+    } else if (userId.toString() === babysitterUserId.toString()) {
       // Babysitter reviewing parent
-      toUserId = booking.parentId;
+      toUserId = parentUserId;
       fromRole = 'babysitter';
     } else {
       return res.status(403).json({
@@ -109,9 +130,9 @@ exports.submitReview = async (req, res) => {
       babysitter.rating = parseFloat((totalRating / allReviews.length).toFixed(2));
       await babysitter.save();
     } else {
-      // Update parent rating
+      // Update parent rating - babysitter reviewing parent
       const parent = await Parent.findById(booking.parentId);
-      const allReviews = await Review.find({ toUserId: booking.parentId });
+      const allReviews = await Review.find({ toUserId: parent.userId });
       
       const totalRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
       parent.rating = parseFloat((totalRating / allReviews.length).toFixed(2));

@@ -55,6 +55,7 @@ import KinderLogo from '../../assets/KinderLogo.png';
 import KinderBackground from '../../assets/KinderBackground.jpg';
 import ReportSubmission from '../ReportSubmission';
 import NotificationBell from '../NotificationBell';
+import ReviewModal from '../ReviewModal';
 
 const BabysitterDashboard = () => {
   const [user, setUser] = useState(null);
@@ -83,6 +84,8 @@ const BabysitterDashboard = () => {
   const [selectedParentDetails, setSelectedParentDetails] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedBookingForReport, setSelectedBookingForReport] = useState(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
   const navigate = useNavigate();
 
   // Theme color for babysitters - Yellow
@@ -940,6 +943,19 @@ const BabysitterDashboard = () => {
               >
                 Edit Profile
               </Button>
+              <Button
+                variant="contained"
+                onClick={() => navigate('/reviews')}
+                sx={{
+                  backgroundColor: '#FF9800',
+                  color: 'white',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { backgroundColor: '#F57C00' }
+                }}
+              >
+                ⭐ Reviews
+              </Button>
               <NotificationBell themeColor={themeColor} />
               <Button
                 variant="contained"
@@ -1299,6 +1315,7 @@ const BabysitterDashboard = () => {
                             {booking.status === 'completed' && (
                               <IconButton
                                 size="small"
+                                onClick={() => { setSelectedBookingForReview(booking); setShowReviewModal(true); }}
                                 title="Leave Review"
                               >
                                 <RateReviewIcon sx={{ color: '#FF9800', fontSize: 20 }} />
@@ -1782,8 +1799,8 @@ const BabysitterDashboard = () => {
         {/* Report Submission Modal */}
         {showReportModal && selectedBookingForReport && (
           <ReportSubmission
-            bookingId={selectedBookingForReport._id}
-            booking={selectedBookingForReport}
+            bookingId={selectedBookingForReport._raw?._id || selectedBookingForReport._id}
+            booking={selectedBookingForReport._raw || selectedBookingForReport}
             userRole="babysitter"
             onClose={() => {
               setShowReportModal(false);
@@ -1794,6 +1811,25 @@ const BabysitterDashboard = () => {
               setSelectedBookingForReport(null);
               fetchRealBookings(user?.userId || user?._id); // Refresh bookings
               alert('Report submitted successfully!');
+            }}
+          />
+        )}
+
+        {/* Review Modal */}
+        {showReviewModal && selectedBookingForReview && (
+          <ReviewModal
+            open={showReviewModal}
+            onClose={() => {
+              setShowReviewModal(false);
+              setSelectedBookingForReview(null);
+            }}
+            booking={selectedBookingForReview._raw || selectedBookingForReview}
+            babysitter={selectedBookingForReview._raw?.parentId || selectedBookingForReview.parentId}
+            onSuccess={(review) => {
+              setShowReviewModal(false);
+              setSelectedBookingForReview(null);
+              fetchRealBookings(user?.userId || user?._id); // Refresh bookings
+              alert('Review submitted successfully!');
             }}
           />
         )}

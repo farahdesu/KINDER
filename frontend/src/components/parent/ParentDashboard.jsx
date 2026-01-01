@@ -477,7 +477,7 @@ const ParentDashboard = () => {
               { icon: <ChildCare />, label: 'Available Babysitters', value: babysitters.length, color: '#FFEB3B' },
               { icon: <CalendarMonth />, label: 'My Bookings', value: bookings.length, color: themeColor },
               { icon: <CheckCircle />, label: 'Completed', value: bookings.filter(b => b.status === 'completed').length, color: '#4CAF50' },
-              { icon: <StarRate />, label: 'Rating', value: '5.0', color: '#FF9800' }
+              { icon: <StarRate />, label: 'Rating', value: (user?.rating || 0).toFixed(1), color: '#FF9800' }
             ].map((stat, idx) => (
               <Grid item xs={6} sm={3} key={idx}>
                 <Box sx={{ ...darkCardStyle, padding: 2, textAlign: 'center' }}>
@@ -551,7 +551,7 @@ const ParentDashboard = () => {
           <Grid container spacing={2} sx={{ marginBottom: 3 }}>
             {[
               { icon: <EventAvailable />, label: 'My Bookings', action: handleViewBookings, color: themeColor },
-              { icon: <Star />, label: 'Reviews', action: () => {}, color: '#FF9800' },
+              { icon: <Star />, label: 'Reviews', action: () => navigate('/reviews'), color: '#FF9800' },
               { icon: <Person />, label: 'My Profile', action: () => navigate('/parent-profile'), color: '#4CAF50' }
             ].map((card, idx) => (
               <Grid item xs={12} sm={4} key={idx}>

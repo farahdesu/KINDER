@@ -17,6 +17,8 @@ import RejectionPage from './components/RejectionPage';
 import PaymentSuccess from './components/payment/PaymentSuccess';
 import PaymentError from './components/payment/PaymentError';
 import PaymentCancelled from './components/payment/PaymentCancelled';
+import ReviewsPage from './pages/ReviewsPage';
+import AdminFlaggedReviews from './components/admin/AdminFlaggedReviews';
 import './App.css';
 
 function App() {
@@ -37,7 +39,10 @@ function App() {
             <Route path="/parent-bookings" element={<ParentBookingsPage />} />
             <Route path="/parent-profile" element={<ParentProfilePage />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin-flagged-reviews" element={<AdminFlaggedReviews />} />
             <Route path="/account-under-review" element={<AccountUnderReview />} />
+            <Route path="/reviews" element={<ReviewsPage />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-error" element={<PaymentError />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />

@@ -10,16 +10,8 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Verify transporter configuration on startup
-transporter.verify((error, success) => {
-  if (error) {
-    console.log('⚠️  EMAIL SERVICE WARNING: Gmail configuration not set');
-    console.log('   Set GMAIL_USER and GMAIL_PASSWORD in .env file');
-    console.log('   Password reset emails will NOT be sent');
-  } else {
-    console.log('✅ EMAIL SERVICE: Ready to send emails');
-  }
-});
+// Email transporter verification disabled for development
+// transporter.verify() - skipped to avoid warnings during development
 
 // Send password reset email
 const sendPasswordResetEmail = async (email, resetToken, userName) => {
