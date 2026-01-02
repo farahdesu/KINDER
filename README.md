@@ -1,4 +1,4 @@
-# 🍼 KINDER — Babysitter Booking Platform
+#  KINDER — Babysitter Booking Platform
 
 A full-stack web application that connects parents with verified university babysitters, enabling safe childcare booking through time-slot validation, secure payments, and review-based trust.
 
